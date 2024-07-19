@@ -2,8 +2,7 @@ package pkg
 
 import (
 	"context"
-	"fmt"
-
+	"github.com/openkruise/kruise-game/apis/v1alpha1"
 	kruisegameclientset "github.com/openkruise/kruise-game/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -11,9 +10,16 @@ import (
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	// GAMESERVE_OWNER_LABEL ...
+	GAMESERVE_OWNER_LABEL = "game.kruise.io/owner-gss"
+)
+
 type GamePatcher interface {
-	// PatchGameServerStatus patches the game server status
-	PatchGameServerStatus(ctx context.Context, name, namespace string, status string) error
+	// PatchGameServer patches the game server status
+	PatchGameServer(ctx context.Context, gs *v1alpha1.GameServer) error
+
+	ListGameServerByGSS(ctx context.Context, gssName, namespace string) (*v1alpha1.GameServerList, error)
 }
 
 type okgGamePatcher struct {
@@ -28,21 +34,27 @@ func NewGamePatcher(kubeClientset *kubernetes.Clientset, okgClientset *kruisegam
 	}
 }
 
-func (o *okgGamePatcher) PatchGameServerStatus(ctx context.Context, name, namespace string, status string) error {
+func (o *okgGamePatcher) PatchGameServer(ctx context.Context, gs *v1alpha1.GameServer) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		// 获取指定名称的gameserverset
-		gameServerSet, err := o.GameV1alpha1().GameServerSets(namespace).Get(ctx, name, metav1.GetOptions{ResourceVersion: "0"})
+		_, err := o.GameV1alpha1().GameServers(gs.Namespace).Update(ctx, gs, metav1.UpdateOptions{})
 		if err != nil {
-			ctrlLog.Log.Error(err, "Get GameServerSet err")
+			ctrlLog.Log.Error(err, "Update gameserver err", "gsName", gs.Name, "gsNamespace", gs.Namespace)
 			return err
 		}
-		// 修改gameserverset的副本数
-		gameServerSet, err = o.GameV1alpha1().GameServerSets(namespace).Update(ctx, gameServerSet, metav1.UpdateOptions{})
-		if err != nil {
-			ctrlLog.Log.Error(err, "Update GameServerSet err")
-			return err
-		}
-		fmt.Println("GameServerSet ready, gameServerSet.Spec.Replicas: ", *gameServerSet.Spec.Replicas)
 		return nil
 	})
+}
+
+func (o *okgGamePatcher) ListGameServerByGSS(ctx context.Context, gssName, namespace string) (*v1alpha1.GameServerList, error) {
+	gsList, err := o.GameV1alpha1().GameServers(namespace).List(ctx, metav1.ListOptions{
+		ResourceVersion: "0",
+		LabelSelector:   GAMESERVE_OWNER_LABEL + ":" + gssName,
+	})
+	if err != nil {
+		ctrlLog.Log.Error(err, "List GameServerSet err")
+		return nil, err
+	}
+
+	return gsList, nil
 }

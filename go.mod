@@ -9,12 +9,10 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v0.30.2
+	sigs.k8s.io/controller-runtime v0.12.1
 )
 
-require (
-	github.com/openkruise/kruise-api v1.3.0 // indirect
-	sigs.k8s.io/controller-runtime v0.12.1 // indirect
-)
+require github.com/openkruise/kruise-api v1.3.0 // indirect
 
 require (
 	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9 // indirect

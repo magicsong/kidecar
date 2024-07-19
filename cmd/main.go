@@ -3,7 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/homedir"
 	"os"
+	"path/filepath"
+	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -17,22 +22,17 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type GameServerStatus struct {
-	IsIdle           bool   `json:"isIdle"`
-	IsMaintaining    bool   `json:"isMaintaining"`
-	CanAcceptPlayers bool   `json:"canAcceptPlayers"`
-	PlayerCount      int    `json:"playerCount"`
-	Url              string `json:"url"`
-}
-
 var sc = config.NewSafeConfig(prometheus.DefaultRegisterer)
 
 func main() {
 	// Load Kubernetes configuration
-	kubeconfig := os.Getenv("KUBECONFIG")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	// Create Kubernetes clientset
@@ -40,17 +40,18 @@ func main() {
 	okgClientset := kruisegameclientset.NewForConfigOrDie(config)
 
 	gamePatch := pkg.NewGamePatcher(clientset, okgClientset)
-	// Get current Pod information
-	podName := os.Getenv("POD_NAME")
-	namespace := os.Getenv("POD_NAMESPACE")
+	// Get current GameServerSet information
+	gssName := os.Getenv("GAME_SERVER_SET_NAME")
+	namespace := os.Getenv("GAME_SERVER_SET_NAMESPACE")
 
 	// Create logger
 	logger := log.NewNopLogger()
 
 	if err = sc.ReloadConfig("blackbox.yml", logger); err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
+		ctrlLog.FromContext(context.Background()).Error(err, "Error loading blackbox config")
 		panic(err.Error())
 	}
+	ctrlLog.Log.Info("blackbox config loaded, Modules: ", sc.C.Modules)
 
 	// Set up file watcher for config file
 	watcher, err := fsnotify.NewWatcher()
@@ -69,14 +70,15 @@ func main() {
 				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
 					err := sc.ReloadConfig("blackbox.yml", logger)
 					if err != nil {
-						fmt.Printf("Error reloading config: %v\n", err)
+						ctrlLog.FromContext(context.Background()).Error(err, "Error loading blackbox config")
 					}
+					ctrlLog.Log.Info("blackbox config loaded, Modules: ", sc.C.Modules)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				fmt.Printf("Error watching config file: %v\n", err)
+				ctrlLog.FromContext(context.Background()).Error(err, "Error watching config file")
 			}
 		}
 	}()
@@ -88,22 +90,41 @@ func main() {
 
 	// Start monitoring loop
 	for {
-		// Get GameServer information
-		var gameServerStatus GameServerStatus
-
 		// Perform HTTP probe using Blackbox Exporter
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		// Get GameServer by gameserverset selector
+		gsList, err := gamePatch.ListGameServerByGSS(ctx, gssName, namespace)
+		if err != nil && errors.IsNotFound(err) {
+			ctrlLog.FromContext(ctx).Info("GameServer not found by gss", " gssName: ", gssName, " namespace: ", namespace)
+			continue
+		}
+		ctrlLog.Log.Info("GameServer Info ", " len(gs): ", len(gsList.Items))
 
 		registry := prometheus.DefaultRegisterer.(*prometheus.Registry)
-
-		success := prober.ProbeHTTP(ctx, gameServerStatus.Url, sc.C.Modules["http_2xx"], registry, logger)
-		if success {
-			if err = gamePatch.PatchGameServerStatus(ctx, podName, namespace, "Ready"); err != nil {
-				fmt.Printf("Error patching GameServer status: %v\n", err)
+		for _, gs := range gsList.Items {
+			// Probe GameServer Port By HTTP
+			ctrlLog.Log.Info("GameServer Probe", "gssName:", gs.Name, " gssNamespace:", gs.Namespace)
+			// Get HTTP RUL by gs
+			if url, ok := gs.Annotations["http-url"]; ok {
+				success := prober.ProbeHTTP(ctx, url, sc.C.Modules["http_2xx"], registry, logger)
+				ctrlLog.Log.Info("GameServer Probe", "gssName:", gs.Name, " gssNamespace:", gs.Namespace, "success:", success)
+				if success && gs.Spec.OpsState != "Allocated" {
+					gs.Spec.OpsState = "Allocated"
+					if err = gamePatch.PatchGameServer(ctx, &gs); err != nil {
+						fmt.Printf("Error patching GameServer status: %v\n", err)
+					}
+				} else if !success && gs.Spec.OpsState != "WaitToBeDeleted" {
+					gs.Spec.OpsState = "WaitToBeDeleted"
+					if err = gamePatch.PatchGameServer(ctx, &gs); err != nil {
+						fmt.Printf("Error patching GameServer status: %v\n", err)
+					}
+				}
 			}
+
 		}
+
 		// Sleep for a while before next iteration
-		time.Sleep(10 * time.Second)
+		time.Sleep(100 * time.Second)
 	}
 }
