@@ -7,14 +7,15 @@ WORKDIR /app
 # 复制Go模块文件
 COPY go.mod go.sum ./
 
-# 下载依赖
-RUN go mod download
-
 # 复制源代码
-COPY . .
+COPY vendor vendor
+COPY cmd cmd
+COPY pkg pkg
+
 
 # 构建Go应用
-RUN go build -o main cmd/main.go
+# 构建Go应用
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o main cmd/main.go
 
 # 使用轻量级的Alpine Linux作为运行时镜像
 FROM alpine:3.15
