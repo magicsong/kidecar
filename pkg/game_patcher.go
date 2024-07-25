@@ -11,15 +11,23 @@ import (
 )
 
 const (
-	// GAMESERVE_OWNER_LABEL ...
-	GAMESERVE_OWNER_LABEL = "game.kruise.io/owner-gss"
+	// GAMESERVE_PROBE_LABEL ...
+	GAMESERVE_PROBE_LABEL = "game.kruise.io/vke-probe-enabled"
+	// GMAESERVER_PROBE_PORT_LABEL ...
+	GMAESERVER_PROBE_PORT_LABEL = "game.kruise.io/vke-probe-port"
+	// GAMESERVER_WANT_RESP ...
+	GAMESERVER_WANT_RESP = "game.kruise.io/vke-want-resp"
+	// GAMESERVER_NAMESPACE ...
+	GAMESERVER_NAMESPACE = "default"
 )
 
 type GamePatcher interface {
 	// PatchGameServer patches the game server status
 	PatchGameServer(ctx context.Context, gs *v1alpha1.GameServer) error
 
-	ListGameServerByGSS(ctx context.Context, gssName, namespace string) (*v1alpha1.GameServerList, error)
+	ListGameServersByProbeLabel(ctx context.Context) (*v1alpha1.GameServerList, error)
+
+	GetGameServer(ctx context.Context, gsName, namespace string) (*v1alpha1.GameServer, error)
 }
 
 type okgGamePatcher struct {
@@ -46,10 +54,28 @@ func (o *okgGamePatcher) PatchGameServer(ctx context.Context, gs *v1alpha1.GameS
 	})
 }
 
-func (o *okgGamePatcher) ListGameServerByGSS(ctx context.Context, gssName, namespace string) (*v1alpha1.GameServerList, error) {
-	gsList, err := o.GameV1alpha1().GameServers(namespace).List(ctx, metav1.ListOptions{
+func (o *okgGamePatcher) GetGameServer(ctx context.Context, gsName, namespace string) (*v1alpha1.GameServer, error) {
+	gs, err := o.GameV1alpha1().GameServers(namespace).Get(ctx, gsName, metav1.GetOptions{
 		ResourceVersion: "0",
-		LabelSelector:   GAMESERVE_OWNER_LABEL + ":" + gssName,
+	})
+	if err != nil {
+		ctrlLog.Log.Error(err, "List GameServerSet err")
+		return nil, err
+	}
+
+	return gs, nil
+}
+
+func (o *okgGamePatcher) ListGameServersByProbeLabel(ctx context.Context) (*v1alpha1.GameServerList, error) {
+	gsList, err := o.GameV1alpha1().GameServers(GAMESERVER_NAMESPACE).List(ctx, metav1.ListOptions{
+		ResourceVersion: "0",
+		LabelSelector: metav1.FormatLabelSelector(
+			&metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					GAMESERVE_PROBE_LABEL: "true",
+				},
+			},
+		),
 	})
 	if err != nil {
 		ctrlLog.Log.Error(err, "List GameServerSet err")
