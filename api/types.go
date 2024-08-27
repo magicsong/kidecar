@@ -5,19 +5,21 @@ import "context"
 // Plugin 定义所有插件必须实现的方法
 type Plugin interface {
 	Name() string
-	Init(config map[string]interface{}) error
+	Init(config interface{}) error
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 	Version() string
 	Status() (*PluginStatus, error)
+	// must return a pointer of your config
+	GetConfigType() interface{}
 }
 
 // PluginConfig 表示插件的配置
 type PluginConfig struct {
-	Name      string                 `json:"name"`
-	Version   string                 `json:"version"`
-	Config    map[string]interface{} `json:"config"`
-	BootOrder int                    `json:"bootOrder"`
+	Name      string      `json:"name"`
+	Version   string      `json:"version"`
+	Config    interface{} `json:"config"`
+	BootOrder int         `json:"bootOrder"`
 }
 
 // SidecarConfig 表示 Sidecar 的配置
@@ -38,7 +40,7 @@ type PluginStatus struct {
 	Infos       []string `json:"infos"`       // 插件的其他信息
 }
 
-// Sidecar 定义所有 Sidecar 必须实现的方法
+// Sidecar 定义Sidecar对外的接口
 type Sidecar interface {
 	AddPlugin(plugin Plugin) error
 	RemovePlugin(pluginName string) error
