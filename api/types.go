@@ -1,6 +1,10 @@
 package api
 
-import "context"
+import (
+	"context"
+
+	"github.com/magicsong/okg-sidecar/pkg/manager"
+)
 
 // Plugin 定义所有插件必须实现的方法
 type Plugin interface {
@@ -17,7 +21,6 @@ type Plugin interface {
 // PluginConfig 表示插件的配置
 type PluginConfig struct {
 	Name      string      `json:"name"`
-	Version   string      `json:"version"`
 	Config    interface{} `json:"config"`
 	BootOrder int         `json:"bootOrder"`
 }
@@ -50,4 +53,5 @@ type Sidecar interface {
 	PluginStatus(pluginName string) (*PluginStatus, error)
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
+	SetupWithManager(mgr *manager.SidecarManager) error
 }

@@ -18,6 +18,7 @@ const (
 type httpProber struct {
 	config HttpProbeConfig
 	store.StorageFactory
+	status *HttpProbeStatus
 }
 
 // GetConfigType implements api.Plugin.
@@ -32,6 +33,7 @@ func (h *httpProber) Init(config interface{}) error {
 		return fmt.Errorf("invalid config type")
 	}
 	h.config = *probeConfig
+	h.status = &HttpProbeStatus{}
 	return nil
 }
 
@@ -49,13 +51,15 @@ func (h *httpProber) Start(ctx context.Context) error {
 	for {
 		// 为当前的一轮 goroutine 创建一个可以取消的上下文
 		ctxWithCancel, cancel := context.WithCancel(ctx)
-
+		h.status.setStatus("Running")
 		// 启动所有的 probeAndStore goroutine
 		for _, ep := range h.config.Endpoints {
 			wg.Add(1)
+			h.status.incrementGoroutines()
 			go func(ec EndpointConfig) {
 				defer wg.Done()
 				h.probeAndStore(ctxWithCancel, errorCh, ec)
+				h.status.decrementGoroutines()
 			}(ep)
 		}
 
@@ -72,13 +76,14 @@ func (h *httpProber) Start(ctx context.Context) error {
 
 		case <-ctx.Done():
 			// 上下文被取消，退出
+			h.status.setStatus("Stopped")
 			cancel()
 			return ctx.Err()
 		case err := <-errorCh:
 			// 处理错误
 			fmt.Println(err)
 		}
-
+		wg.Wait()
 		// 重启 goroutine，在下一个循环中启动新的 goroutine
 	}
 }
@@ -103,7 +108,11 @@ func (h *httpProber) probeAndStore(ctx context.Context, errorCh chan<- error, co
 
 // Status implements api.Plugin.
 func (h *httpProber) Status() (*api.PluginStatus, error) {
-	panic("unimplemented")
+	return &api.PluginStatus{
+		Name:    pluginName,
+		Health:  h.status.getStatus(),
+		Running: h.status.getStatus() == "Running",
+	}, nil
 }
 
 // Stop implements api.Plugin.

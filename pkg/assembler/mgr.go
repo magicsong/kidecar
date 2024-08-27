@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/magicsong/okg-sidecar/api"
+	"github.com/magicsong/okg-sidecar/pkg/manager"
+	"github.com/magicsong/okg-sidecar/pkg/utils"
 )
 
 var _ api.Sidecar = &sidecar{}
@@ -20,6 +22,13 @@ type sidecar struct {
 	version          string
 	pluginStatuses   map[string]*api.PluginStatus
 	*api.SidecarConfig
+	*manager.SidecarManager
+}
+
+// SetupWithManager implements api.Sidecar.
+func (s *sidecar) SetupWithManager(mgr *manager.SidecarManager) error {
+	s.SidecarManager = mgr
+	return nil
 }
 
 func NewSidecar(config *api.SidecarConfig) api.Sidecar {
@@ -37,6 +46,19 @@ func (s *sidecar) AddPlugin(plugin api.Plugin) error {
 	defer s.lock.Unlock()
 	if plugin.Name() == "" {
 		return fmt.Errorf("plugin name is empty")
+	}
+	var pluginConfig interface{}
+	pluginOption, ok := s.SidecarConfig.Plugins[plugin.Name()]
+	if !ok {
+		pluginConfig = plugin.GetConfigType()
+	} else {
+		err := utils.ConvertJsonObjectToStruct(pluginOption.Config, plugin.GetConfigType())
+		if err != nil {
+			return fmt.Errorf("convert plugin config failed")
+		}
+	}
+	if err := plugin.Init(pluginConfig); err != nil {
+		return fmt.Errorf("init plugin %s failed", plugin.Name())
 	}
 	s.plugins[plugin.Name()] = plugin
 	return nil
