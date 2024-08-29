@@ -13,5 +13,5 @@ type EndpointConfig struct {
 }
 
 type HttpProbeConfig struct {
-	Endpoints []EndpointConfig `json:"endpoints"` // 多个端点的配置
+	Endpoints []EndpointConfig `json:"endpoints,omitempty"` // 多个端点的配置
 }

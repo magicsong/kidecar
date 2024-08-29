@@ -48,8 +48,13 @@ func (h *httpProber) Name() string {
 
 // Start implements api.Plugin.
 func (h *httpProber) Start(ctx context.Context, errorCh chan<- error) {
+	h.log.Info("Starting http probe plugin")
 	reloadConfig := make(chan struct{})
-
+	if len(h.config.Endpoints) == 0 {
+		h.log.Info("No endpoints to probe")
+		h.status.setStatus("Stopped")
+		return
+	}
 	var wg sync.WaitGroup
 	for {
 		// 为当前的一轮 goroutine 创建一个可以取消的上下文

@@ -13,7 +13,7 @@ import (
 	"github.com/magicsong/okg-sidecar/api"
 	"github.com/magicsong/okg-sidecar/pkg/manager"
 	"github.com/magicsong/okg-sidecar/pkg/utils"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -74,15 +74,15 @@ func (s *sidecar) AddPlugin(plugin api.Plugin) error {
 	if plugin.Name() == "" {
 		return fmt.Errorf("plugin name is empty")
 	}
-	var pluginConfig interface{}
+	pluginConfig := plugin.GetConfigType()
 	pluginOption, ok := s.SidecarConfig.Plugins[plugin.Name()]
 	if !ok {
-		pluginConfig = plugin.GetConfigType()
-	} else {
-		err := utils.ConvertJsonObjectToStruct(pluginOption.Config, plugin.GetConfigType())
-		if err != nil {
-			return fmt.Errorf("convert plugin config failed")
-		}
+		s.log.Info("plugin not found in config, skip", "plugin", plugin.Name())
+		return nil
+	}
+	err := utils.ConvertJsonObjectToStruct(pluginOption.Config, pluginConfig)
+	if err != nil {
+		return fmt.Errorf("convert plugin config failed,err:%w", err)
 	}
 	if err := plugin.Init(pluginConfig); err != nil {
 		return fmt.Errorf("init plugin %s failed", plugin.Name())
@@ -180,6 +180,14 @@ func (s *sidecar) pollPluginStatus(pluginName string, interval time.Duration) {
 			s.updatePluginStatus(pluginName)
 		}
 	}()
+}
+
+func (s *sidecar) isPluginEnabled(pluginName string) bool {
+	pluginOption, ok := s.SidecarConfig.Plugins[pluginName]
+	if !ok {
+		return true
+	}
+	return pluginOption.BootOrder > 0
 }
 
 func (s *sidecar) startAllPlugins(ctx context.Context, errorCh chan<- error) {

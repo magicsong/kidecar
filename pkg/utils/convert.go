@@ -13,11 +13,11 @@ func ConvertJsonObjectToStruct(source interface{}, target interface{}) error {
 	if target == nil {
 		return fmt.Errorf("target is nil")
 	}
-	// any must be a map[string]
+	// source must be a map[string]
 	// obj must be a pointer to a struct
 	_, ok := source.(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("any must be a map[string]interface{}")
+		return fmt.Errorf("source must be a map[string]interface{}")
 	}
 	if !isPointerToStruct(target) {
 		return fmt.Errorf("target must be a pointer to a struct")
