@@ -14,4 +14,5 @@ type EndpointConfig struct {
 
 type HttpProbeConfig struct {
 	Endpoints []EndpointConfig `json:"endpoints,omitempty"` // 多个端点的配置
+	ProbeIntervalSeconds int `json:"probeIntervalSeconds"` // 探测间隔时间（秒）
 }

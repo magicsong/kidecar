@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/magicsong/okg-sidecar/api"
 	"github.com/magicsong/okg-sidecar/pkg/store"
+	"k8s.io/client-go/util/retry"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -38,6 +39,9 @@ func (h *httpProber) Init(config interface{}) error {
 	h.config = *probeConfig
 	h.status = &HttpProbeStatus{}
 	h.log = logf.Log.WithName("http_probe")
+	if h.config.ProbeIntervalSeconds <= 0 {
+		h.config.ProbeIntervalSeconds = 5
+	}
 	return nil
 }
 
@@ -93,7 +97,7 @@ func (h *httpProber) Start(ctx context.Context, errorCh chan<- error) {
 	}
 }
 
-func (h *httpProber) probeAndStore(ctx context.Context, errorCh chan<- error, config EndpointConfig) {
+func (h *httpProber) probeAndStore(ctx context.Context, _ chan<- error, config EndpointConfig) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -101,12 +105,21 @@ func (h *httpProber) probeAndStore(ctx context.Context, errorCh chan<- error, co
 			return
 		default:
 			// 正常的探测和存储操作
-			executor := NewExecutor(10, h.StorageFactory)
-			err := executor.Probe(config)
+			err := retry.OnError(retry.DefaultBackoff, func(err error) bool { return true }, func() error {
+				executor := NewExecutor(10, h.StorageFactory)
+				err := executor.Probe(config)
+				if err != nil {
+					h.log.Error(err, "Failed to probe, retry again", "endpoint", config.URL)
+					return err
+				}
+				return nil
+			})
 			if err != nil {
-				errorCh <- fmt.Errorf("error during probe for %v: %w", config, err)
+				h.log.Error(err, "Failed to probe", "endpoint", config.URL)
+			} else {
+				h.log.Info("Probed successfully", "endpoint", config.URL)
 			}
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * time.Duration(h.config.ProbeIntervalSeconds))
 		}
 	}
 }
