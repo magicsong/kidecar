@@ -6,8 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/magicsong/okg-sidecar/api"
 	"github.com/magicsong/okg-sidecar/pkg/store"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -19,6 +21,7 @@ type httpProber struct {
 	config HttpProbeConfig
 	store.StorageFactory
 	status *HttpProbeStatus
+	log    logr.Logger
 }
 
 // GetConfigType implements api.Plugin.
@@ -34,6 +37,7 @@ func (h *httpProber) Init(config interface{}) error {
 	}
 	h.config = *probeConfig
 	h.status = &HttpProbeStatus{}
+	h.log = logf.Log.WithName("http_probe")
 	return nil
 }
 
@@ -43,11 +47,10 @@ func (h *httpProber) Name() string {
 }
 
 // Start implements api.Plugin.
-func (h *httpProber) Start(ctx context.Context) error {
+func (h *httpProber) Start(ctx context.Context, errorCh chan<- error) {
 	reloadConfig := make(chan struct{})
 
 	var wg sync.WaitGroup
-	errorCh := make(chan error)
 	for {
 		// 为当前的一轮 goroutine 创建一个可以取消的上下文
 		ctxWithCancel, cancel := context.WithCancel(ctx)
@@ -78,10 +81,7 @@ func (h *httpProber) Start(ctx context.Context) error {
 			// 上下文被取消，退出
 			h.status.setStatus("Stopped")
 			cancel()
-			return ctx.Err()
-		case err := <-errorCh:
-			// 处理错误
-			fmt.Println(err)
+			return
 		}
 		wg.Wait()
 		// 重启 goroutine，在下一个循环中启动新的 goroutine

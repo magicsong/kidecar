@@ -9,10 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/magicsong/okg-sidecar/api"
 	"github.com/magicsong/okg-sidecar/pkg/manager"
 	"github.com/magicsong/okg-sidecar/pkg/utils"
 	"gopkg.in/yaml.v2"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var _ api.Sidecar = &sidecar{}
@@ -25,6 +27,7 @@ type sidecar struct {
 	pluginStatuses   map[string]*api.PluginStatus
 	*api.SidecarConfig
 	*manager.SidecarManager
+	log logr.Logger
 }
 
 // LoadConfig implements api.Sidecar.
@@ -59,6 +62,7 @@ func NewSidecar() api.Sidecar {
 	return &sidecar{
 		plugins:        make(map[string]api.Plugin),
 		pluginStatuses: make(map[string]*api.PluginStatus),
+		log:            logf.Log.WithName("sidecar"),
 	}
 }
 
@@ -102,7 +106,8 @@ func (s *sidecar) PluginStatus(pluginName string) (*api.PluginStatus, error) {
 }
 
 func (s *sidecar) updatePluginStatus(pluginName string) (*api.PluginStatus, error) {
-
+	s.log.Info("start polling plugin status", "plugin", pluginName)
+	defer s.log.Info("end polling plugin status", "plugin", pluginName)
 	plugin, ok := s.plugins[pluginName]
 	if !ok {
 		return nil, fmt.Errorf("plugin %s not found", pluginName)
@@ -135,13 +140,11 @@ func (s *sidecar) RemovePlugin(pluginName string) error {
 // Start implements api.Sidecar.
 func (s *sidecar) Start(ctx context.Context) error {
 	// start all plugins
-	s.lock.RLock()
-	defer s.lock.RUnlock()
+	s.log.Info("start sidecar")
+	errorCh := make(chan error)
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Second*20)
 	defer cancel()
-	if err := s.StartAllPlugins(ctxWithTimeout); err != nil {
-		return fmt.Errorf("start all plugins failed")
-	}
+	s.startAllPlugins(ctxWithTimeout, errorCh)
 	for _, plugin := range s.plugins {
 		s.pollPluginStatus(plugin.Name(), time.Second*5)
 		time.Sleep(time.Second)
@@ -150,7 +153,11 @@ func (s *sidecar) Start(ctx context.Context) error {
 		// start server
 		go s.startServer()
 	}
-	return nil
+	s.log.Info("sidecar started successfully")
+	// wait for error
+	err := <-errorCh
+	s.log.Error(err, "plugin error")
+	return err
 }
 
 func (s *sidecar) startServer() {
@@ -169,24 +176,21 @@ func (s *sidecar) pollPluginStatus(pluginName string, interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-
 		for range ticker.C {
 			s.updatePluginStatus(pluginName)
 		}
 	}()
 }
 
-// StartAllPlugins implements api.Sidecar.
-func (s *sidecar) StartAllPlugins(ctx context.Context) error {
+func (s *sidecar) startAllPlugins(ctx context.Context, errorCh chan<- error) {
 	for _, plugin := range s.plugins {
+		s.log.Info("start plugin", "plugin", plugin.Name())
 		if s.isPluginRunning(plugin.Name()) {
-			return nil
+			continue
 		}
-		if err := plugin.Start(ctx); err != nil {
-			return fmt.Errorf("start plugin %s failed", plugin.Name())
-		}
+		go plugin.Start(ctx, errorCh)
+		s.log.Info("plugin started successfully", "plugin", plugin.Name())
 	}
-	return nil
 }
 
 // Stop implements api.Sidecar.

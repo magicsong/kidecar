@@ -16,8 +16,6 @@ func (h *HttpProbeStatus) setStatus(status string) {
 }
 
 func (h *HttpProbeStatus) getStatus() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	return h.status
 }
 
@@ -28,8 +26,6 @@ func (h *HttpProbeStatus) setError(err error) {
 }
 
 func (h *HttpProbeStatus) getError() error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	return h.err
 }
 
@@ -46,7 +42,5 @@ func (h *HttpProbeStatus) decrementGoroutines() {
 }
 
 func (h *HttpProbeStatus) getActiveGoroutines() int {
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	return h.activeGoroutines
 }

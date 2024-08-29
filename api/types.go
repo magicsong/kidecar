@@ -10,7 +10,7 @@ import (
 type Plugin interface {
 	Name() string
 	Init(config interface{}) error
-	Start(ctx context.Context) error
+	Start(ctx context.Context, errCh chan<- error)
 	Stop(ctx context.Context) error
 	Version() string
 	Status() (*PluginStatus, error)
@@ -47,8 +47,6 @@ type PluginStatus struct {
 type Sidecar interface {
 	AddPlugin(plugin Plugin) error
 	RemovePlugin(pluginName string) error
-	StartAllPlugins(ctx context.Context) error
-	StopAllPlugins(ctx context.Context) error
 	GetVersion() string
 	PluginStatus(pluginName string) (*PluginStatus, error)
 	Start(ctx context.Context) error
