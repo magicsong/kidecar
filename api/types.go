@@ -54,4 +54,5 @@ type Sidecar interface {
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
 	SetupWithManager(mgr *manager.SidecarManager) error
+	LoadConfig(path string) error
 }

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/magicsong/okg-sidecar/api"
 	"github.com/magicsong/okg-sidecar/pkg/manager"
 	"github.com/magicsong/okg-sidecar/pkg/utils"
+	"gopkg.in/yaml.v2"
 )
 
 var _ api.Sidecar = &sidecar{}
@@ -25,17 +27,38 @@ type sidecar struct {
 	*manager.SidecarManager
 }
 
+// LoadConfig implements api.Sidecar.
+func (s *sidecar) LoadConfig(path string) error {
+	config, err := loadConfig(path)
+	if err != nil {
+		return fmt.Errorf("failed to load config from path %s, err: %w", path, err)
+	}
+	s.SidecarConfig = config
+	return nil
+}
+
+func loadConfig(configPath string) (*api.SidecarConfig, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+	sidecarConfig := &api.SidecarConfig{}
+	if err := yaml.Unmarshal(data, &sidecarConfig); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sidecarConfig file: %w", err)
+	}
+	return sidecarConfig, nil
+}
+
 // SetupWithManager implements api.Sidecar.
 func (s *sidecar) SetupWithManager(mgr *manager.SidecarManager) error {
 	s.SidecarManager = mgr
 	return nil
 }
 
-func NewSidecar(config *api.SidecarConfig) api.Sidecar {
+func NewSidecar() api.Sidecar {
 	return &sidecar{
 		plugins:        make(map[string]api.Plugin),
 		pluginStatuses: make(map[string]*api.PluginStatus),
-		SidecarConfig:  config,
 	}
 }
 

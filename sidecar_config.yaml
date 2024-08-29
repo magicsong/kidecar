@@ -1,0 +1,12 @@
+plugins:
+  ExamplePlugin:
+    name: ExamplePlugin
+    config:
+      param1: example
+      param2: 123
+    bootOrder: 1
+restartPolicy: Always
+resources:
+  CPU: 100m
+  Memory: 128Mi
+sidecarStartOrder: Before
