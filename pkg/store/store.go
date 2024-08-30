@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -25,7 +26,7 @@ type Storage interface {
 type PodAnnotationStore struct {
 	kubeClient kubernetes.Interface
 	// maybe we need dynamic client
-
+	log logr.Logger
 }
 
 // IsInitialized implements Storage.
@@ -40,6 +41,7 @@ func (s *PodAnnotationStore) SetupWithManager(mgr manager.Manager) error {
 		return fmt.Errorf("failed to create kube client: %w", err)
 	}
 	s.kubeClient = clientset
+	s.log = mgr.GetLogger().WithName("pod_annotation_store")
 	return nil
 }
 
@@ -55,6 +57,8 @@ func (s *PodAnnotationStore) Store(data interface{}, config interface{}) error {
 	if err != nil {
 		return err
 	}
+	s.log.Info("store data", "data", data, "pod", nsName)
+	defer s.log.Info("store data done", "data", data, "pod", nsName)
 	// get pod
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		patchData := map[string]interface{}{

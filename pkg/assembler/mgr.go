@@ -105,8 +105,8 @@ func (s *sidecar) PluginStatus(pluginName string) (*api.PluginStatus, error) {
 }
 
 func (s *sidecar) updatePluginStatus(pluginName string) (*api.PluginStatus, error) {
-	s.log.Info("start polling plugin status", "plugin", pluginName)
-	defer s.log.Info("end polling plugin status", "plugin", pluginName)
+	s.log.V(3).Info("start polling plugin status", "plugin", pluginName)
+	defer s.log.V(3).Info("end polling plugin status", "plugin", pluginName)
 	plugin, ok := s.plugins[pluginName]
 	if !ok {
 		return nil, fmt.Errorf("plugin %s not found", pluginName)
@@ -143,7 +143,7 @@ func (s *sidecar) Start(ctx context.Context) error {
 	errorCh := make(chan error)
 	s.startAllPlugins(ctx, errorCh)
 	for _, plugin := range s.plugins {
-		s.pollPluginStatus(plugin.Name(), time.Second*5)
+		s.pollPluginStatus(plugin.Name(), time.Second*30)
 		time.Sleep(time.Second)
 	}
 	if s.isStartWebServer {
