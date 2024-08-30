@@ -1,0 +1,27 @@
+plugins:
+  http_probe:
+    name: http_probe
+    config:
+      endpoints:
+        - url: "http://localhost:8080"               # 目标 URL
+          method: "GET"                           # HTTP 方法
+          # headers:                               # 请求头
+          #   Content-Type: "application/json"
+          #   Authorization: "Bearer your_token"
+          timeout: 30                             # 超时时间（秒）
+          expectedStatusCode: 200                 # 预期的 HTTP 状态码
+          storageConfig:                          # 存储配置
+            type: PodAnnotation
+            podAnnotation:
+             annotationKey: "http_probe" 
+            connectionString: "your_connection_string"
+            databaseName: "your_database_name"
+          # jsonPathConfig:                         # JSONPath 配置
+          #   path: "$.store.book[*].author"
+          #   expectedValue: "John Doe"
+    bootOrder: 1
+restartPolicy: Always
+resources:
+  CPU: 100m
+  Memory: 128Mi
+sidecarStartOrder: Before

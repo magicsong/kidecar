@@ -31,13 +31,14 @@ func (h *httpProber) GetConfigType() interface{} {
 }
 
 // Init implements api.Plugin.
-func (h *httpProber) Init(config interface{}) error {
+func (h *httpProber) Init(config interface{}, mgr api.SidecarManager) error {
 	probeConfig, ok := config.(*HttpProbeConfig)
 	if !ok {
 		return fmt.Errorf("invalid config type")
 	}
 	h.config = *probeConfig
 	h.status = &HttpProbeStatus{}
+	h.StorageFactory = store.NewStorageFactory(mgr)
 	h.log = logf.Log.WithName("http_probe")
 	if h.config.ProbeIntervalSeconds <= 0 {
 		h.config.ProbeIntervalSeconds = 5
@@ -62,7 +63,7 @@ func (h *httpProber) Start(ctx context.Context, errorCh chan<- error) {
 	var wg sync.WaitGroup
 	for {
 		// 为当前的一轮 goroutine 创建一个可以取消的上下文
-		ctxWithCancel, cancel := context.WithCancel(ctx)
+		ctxWithCancel, cancel := context.WithCancel(context.Background())
 		h.status.setStatus("Running")
 		// 启动所有的 probeAndStore goroutine
 		for _, ep := range h.config.Endpoints {
@@ -102,9 +103,11 @@ func (h *httpProber) probeAndStore(ctx context.Context, _ chan<- error, config E
 		select {
 		case <-ctx.Done():
 			// 上下文被取消，安全退出
+			h.log.Info("Context cancelled, exiting", "endpoint", config.URL)
 			return
 		default:
 			// 正常的探测和存储操作
+			h.log.Info("Probing", "endpoint", config.URL)
 			err := retry.OnError(retry.DefaultBackoff, func(err error) bool { return true }, func() error {
 				executor := NewExecutor(10, h.StorageFactory)
 				err := executor.Probe(config)

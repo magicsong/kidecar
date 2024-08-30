@@ -3,13 +3,13 @@ package api
 import (
 	"context"
 
-	"github.com/magicsong/okg-sidecar/pkg/manager"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // Plugin 定义所有插件必须实现的方法
 type Plugin interface {
 	Name() string
-	Init(config interface{}) error
+	Init(config interface{}, mgr SidecarManager) error
 	Start(ctx context.Context, errCh chan<- error)
 	Stop(ctx context.Context) error
 	Version() string
@@ -51,6 +51,14 @@ type Sidecar interface {
 	PluginStatus(pluginName string) (*PluginStatus, error)
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
-	SetupWithManager(mgr *manager.SidecarManager) error
+	SetupWithManager(mgr SidecarManager) error
 	LoadConfig(path string) error
+}
+
+type SidecarManager interface {
+	ctrl.Manager
+	DBManager
+}
+
+type DBManager interface {
 }

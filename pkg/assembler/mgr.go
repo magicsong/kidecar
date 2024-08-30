@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/magicsong/okg-sidecar/api"
-	"github.com/magicsong/okg-sidecar/pkg/manager"
 	"github.com/magicsong/okg-sidecar/pkg/utils"
 	"gopkg.in/yaml.v3"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,7 +25,7 @@ type sidecar struct {
 	version          string
 	pluginStatuses   map[string]*api.PluginStatus
 	*api.SidecarConfig
-	*manager.SidecarManager
+	api.SidecarManager
 	log logr.Logger
 }
 
@@ -53,7 +52,7 @@ func loadConfig(configPath string) (*api.SidecarConfig, error) {
 }
 
 // SetupWithManager implements api.Sidecar.
-func (s *sidecar) SetupWithManager(mgr *manager.SidecarManager) error {
+func (s *sidecar) SetupWithManager(mgr api.SidecarManager) error {
 	s.SidecarManager = mgr
 	return nil
 }
@@ -84,7 +83,7 @@ func (s *sidecar) AddPlugin(plugin api.Plugin) error {
 	if err != nil {
 		return fmt.Errorf("convert plugin config failed,err:%w", err)
 	}
-	if err := plugin.Init(pluginConfig); err != nil {
+	if err := plugin.Init(pluginConfig, s.SidecarManager); err != nil {
 		return fmt.Errorf("init plugin %s failed", plugin.Name())
 	}
 	s.plugins[plugin.Name()] = plugin
@@ -142,9 +141,7 @@ func (s *sidecar) Start(ctx context.Context) error {
 	// start all plugins
 	s.log.Info("start sidecar")
 	errorCh := make(chan error)
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, time.Second*20)
-	defer cancel()
-	s.startAllPlugins(ctxWithTimeout, errorCh)
+	s.startAllPlugins(ctx, errorCh)
 	for _, plugin := range s.plugins {
 		s.pollPluginStatus(plugin.Name(), time.Second*5)
 		time.Sleep(time.Second)

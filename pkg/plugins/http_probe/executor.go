@@ -45,15 +45,14 @@ func (p *Executor) Probe(config EndpointConfig) error {
 	}
 	defer resp.Body.Close()
 
-	// Check expected status code
-	if resp.StatusCode != config.ExpectedStatusCode {
-		return fmt.Errorf("unexpected status code: got %v, expected %v", resp.StatusCode, config.ExpectedStatusCode)
-	}
-
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %v", err)
+	}
+	// Check expected status code
+	if resp.StatusCode != config.ExpectedStatusCode {
+		return fmt.Errorf("unexpected status code: got %v, expected %v, body: %s", resp.StatusCode, config.ExpectedStatusCode, string(body))
 	}
 
 	// Extract data
@@ -72,7 +71,7 @@ func (p *Executor) extractData(data []byte, extractorConfig *store.JSONPathConfi
 	if extractorConfig != nil {
 		return extractor.GetDataFromJsonText(string(data), extractorConfig.JSONPath)
 	}
-	return data, nil
+	return string(data), nil
 }
 
 func (p *Executor) storeData(data interface{}, storeConfig *store.StorageConfig) error {
