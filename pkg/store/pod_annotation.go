@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/go-logr/logr"
+	"github.com/magicsong/okg-sidecar/pkg/info"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var _ Storage = &PodAnnotationStore{}
+var _ Storage = &podAnnotationStore{}
 
 type Storage interface {
 	Store(data interface{}, config interface{}) error
@@ -23,19 +23,19 @@ type Storage interface {
 	IsInitialized() bool
 }
 
-type PodAnnotationStore struct {
+type podAnnotationStore struct {
 	kubeClient kubernetes.Interface
 	// maybe we need dynamic client
 	log logr.Logger
 }
 
 // IsInitialized implements Storage.
-func (s *PodAnnotationStore) IsInitialized() bool {
+func (s *podAnnotationStore) IsInitialized() bool {
 	return s.kubeClient != nil
 }
 
 // SetupWithManager implements Storage.
-func (s *PodAnnotationStore) SetupWithManager(mgr manager.Manager) error {
+func (s *podAnnotationStore) SetupWithManager(mgr manager.Manager) error {
 	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to create kube client: %w", err)
@@ -45,7 +45,7 @@ func (s *PodAnnotationStore) SetupWithManager(mgr manager.Manager) error {
 	return nil
 }
 
-func (s *PodAnnotationStore) Store(data interface{}, config interface{}) error {
+func (s *podAnnotationStore) Store(data interface{}, config interface{}) error {
 	if config == nil {
 		return fmt.Errorf("invalid config")
 	}
@@ -53,7 +53,7 @@ func (s *PodAnnotationStore) Store(data interface{}, config interface{}) error {
 	if !ok {
 		return fmt.Errorf("invalid config type")
 	}
-	nsName, err := getCurrentPodNamespaceAndName()
+	nsName, err := info.GetCurrentPodNamespaceAndName()
 	if err != nil {
 		return err
 	}
@@ -81,18 +81,6 @@ func (s *PodAnnotationStore) Store(data interface{}, config interface{}) error {
 	return nil
 }
 
-func (s *PodAnnotationStore) Name() string {
+func (s *podAnnotationStore) Name() string {
 	return "PodAnnotation"
-}
-
-func getCurrentPodNamespaceAndName() (*types.NamespacedName, error) {
-	ns := os.Getenv("POD_NAMESPACE")
-	name := os.Getenv("POD_NAME")
-	if ns == "" || name == "" {
-		return nil, fmt.Errorf("failed to get current pod namespace and name")
-	}
-	return &types.NamespacedName{
-		Namespace: ns,
-		Name:      name,
-	}, nil
 }

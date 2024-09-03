@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"io/ioutil"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/util/homedir"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/homedir"
 
 	"github.com/magicsong/okg-sidecar/pkg"
 	kruisegameclientset "github.com/openkruise/kruise-game/pkg/client/clientset/versioned"
@@ -72,12 +73,12 @@ func main() {
 				if success && gs.Spec.OpsState != "Allocated" {
 					gs.Spec.OpsState = "Allocated"
 					if err = gamePatch.PatchGameServer(ctx, &gs); err != nil {
-						klog.Error("Error patching GameServer status: %v\n", err)
+						klog.Errorf("Error patching GameServer status: %v\n", err)
 					}
 				} else if !success && gs.Spec.OpsState == "Allocated" {
 					gs.Spec.OpsState = "WaitToBeDeleted"
 					if err = gamePatch.PatchGameServer(ctx, &gs); err != nil {
-						klog.Error("Error patching GameServer status: %v\n", err)
+						klog.Errorf("Error patching GameServer status: %v\n", err)
 					}
 				}
 			}

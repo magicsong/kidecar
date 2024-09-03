@@ -11,11 +11,15 @@ plugins:
           timeout: 30                             # 超时时间（秒）
           expectedStatusCode: 200                 # 预期的 HTTP 状态码
           storageConfig:                          # 存储配置
-            type: PodAnnotation
-            podAnnotation:
-             annotationKey: "http_probe" 
-            connectionString: "your_connection_string"
-            databaseName: "your_database_name"
+            type: CRD
+            CRD:
+             #annotationKey: http_probe
+             jsonPath: /spec/opstate
+             group:  game.kruise.io
+             version: v1alpha1
+             resource: gameservers
+             name: ${SELF:POD_NAME}
+             namespace: ${SELF:POD_NAMESPACE}
           # jsonPathConfig:                         # JSONPath 配置
           #   path: "$.store.book[*].author"
           #   expectedValue: "John Doe"

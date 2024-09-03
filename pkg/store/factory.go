@@ -19,7 +19,8 @@ func NewStorageFactory(mgr api.SidecarManager) StorageFactory {
 	f := &defaultStorageFactory{
 		storageMap: make(map[StorageType]Storage),
 	}
-	f.storageMap[StorageTypePodAnnotation] = &PodAnnotationStore{}
+	f.storageMap[StorageTypePodAnnotation] = &podAnnotationStore{}
+	f.storageMap[StorageTypeCRD] = &crd{}
 	f.manager = mgr
 	return f
 }

@@ -1,6 +1,11 @@
 package store
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/magicsong/okg-sidecar/pkg/expression"
+	corev1 "k8s.io/api/core/v1"
+)
 
 type StorageType string
 
@@ -15,8 +20,12 @@ type PodAnnotationConfig struct {
 }
 
 type CRDConfig struct {
-	CRDName   string `json:"crdName"`   // CRD 名称
-	FieldName string `json:"fieldName"` // CRD 中的字段名
+	GroupName string `json:"groupName,omitempty"` // CRD 中的 Group 名称
+	Version   string `json:"version"`             // CRD 中的版本
+	Resource  string `json:"resource"`            // CRD 中的 resource 名称，一般都是复数形式，比如pods
+	Namespace string `json:"namespace,omitempty"` // CRD 中的 namespace 名称
+	Name      string `json:"name"`                // CRD 中的名称
+	JsonPath  string `json:"jsonPath"`            // JsonPatch中的路径
 }
 
 type HTTPMetricConfig struct {
@@ -58,4 +67,36 @@ func (s *StorageConfig) StoreData(factory StorageFactory, data interface{}) erro
 	default:
 		return fmt.Errorf("unsupported storage type: %s", s.Type)
 	}
+}
+
+func (c *CRDConfig) IsValid() error {
+	if c.JsonPath == "" {
+		return fmt.Errorf("invalid jsonPath")
+	}
+	// groupName can be empty
+	// if c.GroupName==""{
+	// 	return fmt.Errorf("invalid group name")
+	// }
+	if c.Version == "" {
+		return fmt.Errorf("invalid version")
+	}
+	if c.Resource == "" {
+		return fmt.Errorf("invalid resource")
+	}
+	return nil
+}
+
+// ParseTemplate parses the template in CRDConfig
+func (c *CRDConfig) ParseTemplate(container *corev1.Container) error {
+	v, err := expression.ReplaceValue(c.Namespace, container)
+	if err != nil {
+		return fmt.Errorf("failed to parse namespace: %w", err)
+	}
+	c.Namespace = v
+	v, err = expression.ReplaceValue(c.Name, container)
+	if err != nil {
+		return fmt.Errorf("failed to parse name: %w", err)
+	}
+	c.Name = v
+	return nil
 }
