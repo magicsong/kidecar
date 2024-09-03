@@ -20,7 +20,7 @@ type PodAnnotationConfig struct {
 }
 
 type CRDConfig struct {
-	GroupName string `json:"groupName,omitempty"` // CRD 中的 Group 名称
+	Group     string `json:"group,omitempty"`     // CRD 中的 Group 名称
 	Version   string `json:"version"`             // CRD 中的版本
 	Resource  string `json:"resource"`            // CRD 中的 resource 名称，一般都是复数形式，比如pods
 	Namespace string `json:"namespace,omitempty"` // CRD 中的 namespace 名称

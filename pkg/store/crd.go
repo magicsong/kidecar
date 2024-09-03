@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -57,13 +58,14 @@ func (c *crd) Store(data interface{}, config interface{}) error {
 	if err := myconfig.ParseTemplate(&pod.Spec.Containers[0]); err != nil {
 		return fmt.Errorf("failed to parse template in crd config: %w", err)
 	}
-	gvr := schema.GroupVersionResource{Group: myconfig.GroupName, Version: myconfig.Version, Resource: myconfig.Resource}
-	patch := jsonpatch.JsonPatchOperation{
+	gvr := schema.GroupVersionResource{Group: myconfig.Group, Version: myconfig.Version, Resource: myconfig.Resource}
+	patch := []jsonpatch.JsonPatchOperation{{
 		Operation: "replace",
 		Path:      myconfig.JsonPath,
-		Value:     data,
+		Value:     data},
 	}
-	patchBytes, _ := patch.MarshalJSON()
+	patchBytes, _ := json.Marshal(patch)
+	c.log.Info("patch crd", "crd", myconfig, "patch", string(patchBytes), "gvr", gvr)
 	_, err = c.dynamic.Resource(gvr).Namespace(myconfig.Namespace).Patch(context.TODO(), myconfig.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to patch crd: %w", err)

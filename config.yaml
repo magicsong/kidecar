@@ -14,7 +14,7 @@ plugins:
             type: CRD
             CRD:
              #annotationKey: http_probe
-             jsonPath: /spec/opstate
+             jsonPath: /spec/opsState
              group:  game.kruise.io
              version: v1alpha1
              resource: gameservers
