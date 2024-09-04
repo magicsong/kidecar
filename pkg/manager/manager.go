@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/magicsong/okg-sidecar/api"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -12,6 +13,7 @@ import (
 type sidecarManager struct {
 	ctrl.Manager
 	api.DBManager
+	kubernetes.Interface
 }
 
 func NewManager() (api.SidecarManager, error) {
@@ -24,5 +26,9 @@ func NewManager() (api.SidecarManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to create manager: %w", err)
 	}
-	return sidecarManager{Manager: mgr}, nil
+	kube, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create kubernetes client: %w", err)
+	}
+	return sidecarManager{Manager: mgr, Interface: kube}, nil
 }

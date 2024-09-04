@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/magicsong/okg-sidecar/pkg/assembler"
+	"github.com/magicsong/okg-sidecar/pkg/info"
 	"github.com/magicsong/okg-sidecar/pkg/manager"
 	"github.com/magicsong/okg-sidecar/pkg/plugins"
 	flag "github.com/spf13/pflag"
@@ -32,6 +33,7 @@ func main() {
 		log.Error(err, "failed to create manager")
 		panic(err)
 	}
+	info.SetGlobalKubeInterface(mgr)
 	sidecar.SetupWithManager(mgr)
 	// add plugins
 	for _, v := range plugins.PluginRegistry {

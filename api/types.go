@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -58,6 +59,7 @@ type Sidecar interface {
 type SidecarManager interface {
 	ctrl.Manager
 	DBManager
+	kubernetes.Interface
 }
 
 type DBManager interface {

@@ -3,40 +3,57 @@ package store
 import (
 	"fmt"
 
-	"github.com/magicsong/okg-sidecar/pkg/expression"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type StorageType string
 
 const (
-	StorageTypePodAnnotation StorageType = "PodAnnotation"
-	StorageTypeCRD           StorageType = "CRD"
-	StorageTypeHTTPMetric    StorageType = "HTTPMetric"
+	// StorageTypeInKube represent store in kube object
+	StorageTypeInKube     StorageType = "InKube"
+	StorageTypeHTTPMetric StorageType = "HTTPMetric"
 )
 
-type PodAnnotationConfig struct {
-	AnnotationKey string `json:"annotationKey"` // Pod 注解的键名
+// InKubeConfig is the configuration for storing data in kube object
+type InKubeConfig struct {
+	// Target is the target kube object, if is empty, means current pod
+	Target        *TargetKubeObject   `json:"target,omitempty"`
+	JsonPath      *string             `json:"jsonPath,omitempty"`      // JsonPatch中的路径
+	AnnotationKey *string             `json:"annotationKey,omitempty"` // Pod 注解的键名
+	LabelKey      *string             `json:"labelKey,omitempty"`      // Pod 注解的键名
+	MarkerPolices []ProbeMarkerPolicy `json:"markerPolices,omitempty"` // 适用于 ProbeMarkerPolicy 的配置
 }
 
-type CRDConfig struct {
-	Group     string `json:"group,omitempty"`     // CRD 中的 Group 名称
-	Version   string `json:"version"`             // CRD 中的版本
-	Resource  string `json:"resource"`            // CRD 中的 resource 名称，一般都是复数形式，比如pods
-	Namespace string `json:"namespace,omitempty"` // CRD 中的 namespace 名称
-	Name      string `json:"name"`                // CRD 中的名称
-	JsonPath  string `json:"jsonPath"`            // JsonPatch中的路径
+// TargetKubeObject is the target kube object
+type TargetKubeObject struct {
+	Group     string `json:"group,omitempty"`                  // CRD 中的 Group 名称
+	Version   string `json:"version"`                          // CRD 中的版本
+	Resource  string `json:"resource"`                         // CRD 中的 resource 名称，一般都是复数形式，比如pods
+	Namespace string `json:"namespace,omitempty" parse:"true"` // CRD 中的 namespace 名称
+	Name      string `json:"name" parse:"true"`                // CRD 中的名称
+	PodOwner  bool   `json:"podOwner,omitempty"`               // 是否是 Pod 的拥有者
 }
-
 type HTTPMetricConfig struct {
 	MetricName string `json:"metricName"` // 指标名称
 }
 
 type StorageConfig struct {
-	Type          StorageType          `json:"type"`                    // 存储类型
-	PodAnnotation *PodAnnotationConfig `json:"podAnnotation,omitempty"` // 适用于 Pod 注解的配置
-	CRD           *CRDConfig           `json:"crd,omitempty"`           // 适用于 CRD 的配置
-	HTTPMetric    *HTTPMetricConfig    `json:"httpMetric,omitempty"`    // 适用于 HTTP 指标的配
+	Type         StorageType       `json:"type"` // 存储类型
+	InKubeConfig *InKubeConfig     `json:"in_kube_config,omitempty"`
+	HTTPMetric   *HTTPMetricConfig `json:"httpMetric,omitempty"` // 适用于 HTTP 指标的配
+}
+
+// ProbeMarkerPolicy convert prob value to user defined values
+type ProbeMarkerPolicy struct {
+	// probe status,
+	// For example: State=Succeeded, annotations[controller.kubernetes.io/pod-deletion-cost] = '10'.
+	// State=Failed, annotations[controller.kubernetes.io/pod-deletion-cost] = '-10'.
+	// In addition, if State=Failed is not defined, probe execution fails, and the annotations[controller.kubernetes.io/pod-deletion-cost] will be Deleted
+	State string `json:"state"`
+	// Patch Labels pod.labels
+	Labels map[string]string `json:"labels,omitempty"`
+	// Patch annotations pod.annotations
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 type FieldType string
@@ -58,10 +75,8 @@ func (s *StorageConfig) StoreData(factory StorageFactory, data interface{}) erro
 		return fmt.Errorf("failed to get storage: %w", err)
 	}
 	switch s.Type {
-	case StorageTypePodAnnotation:
-		return storage.Store(data, s.PodAnnotation)
-	case StorageTypeCRD:
-		return storage.Store(data, s.CRD)
+	case StorageTypeInKube:
+		return storage.Store(data, s.InKubeConfig)
 	case StorageTypeHTTPMetric:
 		return storage.Store(data, s.HTTPMetric)
 	default:
@@ -69,34 +84,35 @@ func (s *StorageConfig) StoreData(factory StorageFactory, data interface{}) erro
 	}
 }
 
-func (c *CRDConfig) IsValid() error {
-	if c.JsonPath == "" {
-		return fmt.Errorf("invalid jsonPath")
-	}
-	// groupName can be empty
-	// if c.GroupName==""{
-	// 	return fmt.Errorf("invalid group name")
-	// }
-	if c.Version == "" {
+func (t *TargetKubeObject) IsValid() error {
+	if t.Version == "" {
 		return fmt.Errorf("invalid version")
 	}
-	if c.Resource == "" {
+	if t.Resource == "" {
 		return fmt.Errorf("invalid resource")
+	}
+	if t.Name == "" {
+		return fmt.Errorf("invalid name")
 	}
 	return nil
 }
 
-// ParseTemplate parses the template in CRDConfig
-func (c *CRDConfig) ParseTemplate(container *corev1.Container) error {
-	v, err := expression.ReplaceValue(c.Namespace, container)
-	if err != nil {
-		return fmt.Errorf("failed to parse namespace: %w", err)
+func (t *TargetKubeObject) ToGvr() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    t.Group,
+		Version:  t.Version,
+		Resource: t.Resource,
 	}
-	c.Namespace = v
-	v, err = expression.ReplaceValue(c.Name, container)
-	if err != nil {
-		return fmt.Errorf("failed to parse name: %w", err)
+}
+
+func (c *InKubeConfig) IsValid() error {
+	if c.Target != nil {
+		if err := c.Target.IsValid(); err != nil {
+			return fmt.Errorf("invalid target: %w", err)
+		}
 	}
-	c.Name = v
+	if c.AnnotationKey == nil && c.LabelKey == nil && len(c.MarkerPolices) == 0 {
+		return fmt.Errorf("invalid annotationKey or labelKey or markerPolices")
+	}
 	return nil
 }
