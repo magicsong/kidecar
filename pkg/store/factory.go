@@ -20,6 +20,7 @@ func NewStorageFactory(mgr api.SidecarManager) StorageFactory {
 		storageMap: make(map[StorageType]Storage),
 	}
 	f.storageMap[StorageTypeInKube] = &inKube{}
+	f.storageMap[StorageTypeHTTPMetric] = &promMetric{}
 	f.manager = mgr
 	return f
 }

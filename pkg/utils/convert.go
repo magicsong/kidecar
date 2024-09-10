@@ -38,3 +38,14 @@ func isPointerToStruct(obj interface{}) bool {
 	v := reflect.ValueOf(obj)
 	return v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Struct
 }
+
+func ConvertToString(data interface{}) string {
+	if str, ok := data.(string); ok {
+		return str
+	}
+
+	if bytes, ok := data.([]byte); ok {
+		return string(bytes)
+	}
+	return fmt.Sprintf("%v", data)
+}
