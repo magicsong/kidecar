@@ -12,7 +12,7 @@ spec:
     maxUnavailable: 1
   containers:
   - name: game-sidecar
-    image: ai-demo-image-cn-beijing.cr.volces.com/game-images/okg-sidecar:v4
+    image: ai-demo-image-cn-beijing.cr.volces.com/game-images/okg-sidecar:v5
     volumeMounts:
     - mountPath: /opt/sidecar
       name: config-volume
