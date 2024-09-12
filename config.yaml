@@ -11,15 +11,16 @@ plugins:
           timeout: 30                             # 超时时间（秒）
           expectedStatusCode: 200                 # 预期的 HTTP 状态码
           storageConfig:                          # 存储配置
-            type: CRD
-            CRD:
+            type: InKube
+            inKube:
              #annotationKey: http_probe
-             jsonPath: /spec/opsState
-             group:  game.kruise.io
-             version: v1alpha1
-             resource: gameservers
-             name: ${SELF:POD_NAME}
-             namespace: ${SELF:POD_NAMESPACE}
+             target:
+              group:  game.kruise.io
+              version: v1alpha1
+              resource: gameservers
+              name: ${SELF:POD_NAME}
+              namespace: ${SELF:POD_NAMESPACE}
+             jsonPath: /spec/opsState 
           # jsonPathConfig:                         # JSONPath 配置
           #   path: "$.store.book[*].author"
           #   expectedValue: "John Doe"

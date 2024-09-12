@@ -3,15 +3,22 @@ package template
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/magicsong/okg-sidecar/pkg/info"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func expressionReplaceValue(value string) (string, error) {
+func expressionReplaceValue(value string, pod *corev1.Pod) (string, error) {
 	// 这里添加你自己的模板解析逻辑
-	return value, nil
+	return ReplaceValue(value, &pod.Spec.Containers[0])
 }
 
 // ParseConfig 递归地解析配置结构体中的字段
 func ParseConfig(config interface{}) error {
+	pod, err := info.GetCurrentPod()
+	if err != nil {
+		return fmt.Errorf("failed to get current pod: %w", err)
+	}
 	v := reflect.ValueOf(config)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -33,7 +40,7 @@ func ParseConfig(config interface{}) error {
 		if tagValue, ok := fieldType.Tag.Lookup("parse"); ok && tagValue == "true" {
 			// 解析字段值
 			if field.Kind() == reflect.String {
-				parsedValue, err := expressionReplaceValue(field.String())
+				parsedValue, err := expressionReplaceValue(field.String(), pod)
 				if err != nil {
 					return fmt.Errorf("failed to parse field %s: %w", fieldType.Name, err)
 				}

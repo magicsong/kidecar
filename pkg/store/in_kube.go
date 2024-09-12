@@ -77,8 +77,8 @@ func (c *inKube) storeInCurrentPod(data interface{}, config *InKubeConfig) error
 // Store implements Storage.
 func (c *inKube) Store(data interface{}, config interface{}) error {
 	myconfig, ok := config.(*InKubeConfig)
-	if !ok {
-		return fmt.Errorf("invalid config type")
+	if !ok || myconfig == nil {
+		return fmt.Errorf("invalid in kube config type")
 	}
 	c.log.Info("store data", "data", data, "inKube", myconfig)
 	defer c.log.Info("store data done", "data", data)
@@ -92,7 +92,7 @@ func (c *inKube) Store(data interface{}, config interface{}) error {
 }
 
 func (c *inKube) storeInOtherObject(data interface{}, myconfig *InKubeConfig) error {
-	if myconfig.Target == nil || len(myconfig.MarkerPolices) < 1 {
+	if myconfig.Target == nil && len(myconfig.MarkerPolices) < 1 {
 		return fmt.Errorf("invalid target or markerPolices")
 	}
 	gvr := myconfig.Target.ToGvr()

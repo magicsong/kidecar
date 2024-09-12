@@ -38,9 +38,9 @@ type HTTPMetricConfig struct {
 }
 
 type StorageConfig struct {
-	Type         StorageType       `json:"type"` // 存储类型
-	InKubeConfig *InKubeConfig     `json:"in_kube_config,omitempty"`
-	HTTPMetric   *HTTPMetricConfig `json:"httpMetric,omitempty"` // 适用于 HTTP 指标的配
+	Type       StorageType       `json:"type"` // 存储类型
+	InKube     *InKubeConfig     `json:"inKube,omitempty"`
+	HTTPMetric *HTTPMetricConfig `json:"httpMetric,omitempty"` // 适用于 HTTP 指标的配
 }
 
 // ProbeMarkerPolicy convert prob value to user defined values
@@ -76,7 +76,7 @@ func (s *StorageConfig) StoreData(factory StorageFactory, data interface{}) erro
 	}
 	switch s.Type {
 	case StorageTypeInKube:
-		return storage.Store(data, s.InKubeConfig)
+		return storage.Store(data, s.InKube)
 	case StorageTypeHTTPMetric:
 		return storage.Store(data, s.HTTPMetric)
 	default:
@@ -111,7 +111,7 @@ func (c *InKubeConfig) IsValid() error {
 			return fmt.Errorf("invalid target: %w", err)
 		}
 	}
-	if c.AnnotationKey == nil && c.LabelKey == nil && len(c.MarkerPolices) == 0 {
+	if c.JsonPath == nil && c.AnnotationKey == nil && c.LabelKey == nil && len(c.MarkerPolices) == 0 {
 		return fmt.Errorf("invalid annotationKey or labelKey or markerPolices")
 	}
 	return nil

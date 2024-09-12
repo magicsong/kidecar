@@ -14,14 +14,13 @@ import (
 
 // GetCurrentPod return pod the sidecar running
 var cacheExpiration time.Duration = 1 * time.Minute
-var cache map[string]*corev1.Pod
+var cache map[string]*corev1.Pod = make(map[string]*corev1.Pod)
 
 func GetCurrentPod() (*corev1.Pod, error) {
 	nsname, err := GetCurrentPodNamespaceAndName()
 	if err != nil {
 		return nil, err
 	}
-
 	// Check if the pod is already cached
 	if pod, ok := cache[nsname.String()]; ok {
 		return pod, nil

@@ -8,6 +8,7 @@ import (
 
 	"github.com/magicsong/okg-sidecar/pkg/extractor"
 	"github.com/magicsong/okg-sidecar/pkg/store"
+	"github.com/magicsong/okg-sidecar/pkg/template"
 )
 
 // Executor holds the HTTP client and provides methods for probing
@@ -75,5 +76,9 @@ func (p *Executor) extractData(data []byte, extractorConfig *store.JSONPathConfi
 }
 
 func (p *Executor) storeData(data interface{}, storeConfig *store.StorageConfig) error {
+	err := template.ParseConfig(storeConfig)
+	if err != nil {
+		return fmt.Errorf("failed to parse config: %v", err)
+	}
 	return storeConfig.StoreData(p.StorageFactory, data)
 }
