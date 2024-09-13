@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/magicsong/okg-sidecar/api"
@@ -17,6 +18,7 @@ import (
 )
 
 var _ Storage = &inKube{}
+var rfc6901Encoder = strings.NewReplacer("~", "~0", "/", "~1")
 
 type inKube struct {
 	log     logr.Logger
@@ -53,23 +55,31 @@ func (c *inKube) storeInCurrentPod(data string, config *InKubeConfig) error {
 	patchData := map[string]interface{}{
 		"metadata": map[string]interface{}{},
 	}
+	annotaions := make(map[string]interface{})
+	labels := make(map[string]interface{})
 	if config.AnnotationKey != nil {
-		metadata["annotations"] = map[string]interface{}{*config.AnnotationKey: data}
+		annotaions[*config.AnnotationKey] = data
 	}
 	if config.LabelKey != nil {
-		metadata["labels"] = map[string]interface{}{*config.LabelKey: data}
+		labels[*config.LabelKey] = data
 	}
 	if policy, ok := config.GetPolicyOfState(data); ok {
 		if len(policy.Annotations) > 0 {
 			for key, value := range policy.Annotations {
-				metadata["annotations"].(map[string]interface{})[key] = value
+				annotaions[key] = value
 			}
 		}
 		if len(policy.Labels) > 0 {
 			for key, value := range policy.Labels {
-				metadata["labels"].(map[string]interface{})[key] = value
+				labels[key] = value
 			}
 		}
+	}
+	if len(annotaions) > 0 {
+		metadata["annotations"] = annotaions
+	}
+	if len(labels) > 0 {
+		metadata["labels"] = labels
 	}
 	patchData["metadata"] = metadata
 	patchBytes, _ := json.Marshal(patchData)
@@ -97,15 +107,16 @@ func (c *inKube) Store(data string, config interface{}) error {
 	if err := myconfig.IsValid(); err != nil {
 		return fmt.Errorf("invalid config: %w", err)
 	}
-	if myconfig.Target == nil {
-		return c.storeInCurrentPod(data, myconfig)
+	myconfig.Preprocess()
+	if err := c.storeInCurrentPod(data, myconfig); err != nil {
+		return fmt.Errorf("failed to store in current pod: %w", err)
 	}
 	return c.storeInOtherObject(data, myconfig)
 }
 
 func (c *inKube) storeInOtherObject(data string, myconfig *InKubeConfig) error {
 	if myconfig.Target == nil && len(myconfig.MarkerPolices) < 1 {
-		return fmt.Errorf("invalid target or markerPolices")
+		return nil
 	}
 	gvr := myconfig.Target.ToGvr()
 	c.log.Info("store data in other object", "data", data, "inKube", myconfig, "gvr", gvr)

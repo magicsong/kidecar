@@ -108,7 +108,6 @@ func (t *TargetKubeObject) ToGvr() schema.GroupVersionResource {
 }
 
 func (c *InKubeConfig) IsValid() error {
-	c.buildPolicyMap()
 	if c.Target != nil {
 		if err := c.Target.IsValid(); err != nil {
 			return fmt.Errorf("invalid target: %w", err)
@@ -139,4 +138,31 @@ func (c *InKubeConfig) GetPolicyOfState(state string) (*ProbeMarkerPolicy, bool)
 		return nil, false
 	}
 	return &p, true
+}
+
+func (c *InKubeConfig) Preprocess() {
+	if c.AnnotationKey != nil {
+		*c.AnnotationKey = rfc6901Encoder.Replace(*c.AnnotationKey)
+	}
+	if c.LabelKey != nil {
+		*c.LabelKey = rfc6901Encoder.Replace(*c.LabelKey)
+	}
+	if len(c.MarkerPolices) < 1 {
+		return
+	}
+	for _, policy := range c.MarkerPolices {
+		if len(policy.Annotations) > 0 {
+			for key, value := range policy.Annotations {
+				policy.Annotations[rfc6901Encoder.Replace(key)] = value
+				delete(policy.Annotations, key)
+			}
+		}
+		if len(policy.Labels) > 0 {
+			for key, value := range policy.Labels {
+				policy.Labels[rfc6901Encoder.Replace(key)] = value
+				delete(policy.Labels, key)
+			}
+		}
+	}
+	c.buildPolicyMap()
 }

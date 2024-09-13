@@ -14,13 +14,25 @@ plugins:
             type: InKube
             inKube:
              #annotationKey: http_probe
-             target:
-              group:  game.kruise.io
-              version: v1alpha1
-              resource: gameservers
-              name: ${SELF:POD_NAME}
-              namespace: ${SELF:POD_NAMESPACE}
-             jsonPath: /spec/opsState 
+              target:
+                  group:  game.kruise.io
+                  version: v1alpha1
+                  resource: gameservers
+                  name: ${SELF:POD_NAME}
+                  namespace: ${SELF:POD_NAMESPACE}
+              jsonPath: /spec/opsState
+              markerPolices:
+                - state: idle
+                  labels:
+                    gameserver-idle: 'true'
+                  annotations:
+                    controller.kubernetes.io/pod-deletion-cost: '-10'
+                - state: allocated
+                  labels:
+                    gameserver-idle: 'false'
+                  annotations:
+                    controller.kubernetes.io/pod-deletion-cost: '10'
+
           # jsonPathConfig:                         # JSONPath 配置
           #   path: "$.store.book[*].author"
           #   expectedValue: "John Doe"
