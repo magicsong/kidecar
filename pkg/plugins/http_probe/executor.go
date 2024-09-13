@@ -62,7 +62,7 @@ func (p *Executor) Probe(config EndpointConfig) error {
 		return fmt.Errorf("failed to extract data: %v", err)
 	}
 	// Store data
-	if err := p.storeData(data, &config.StorageConfig); err != nil {
+	if err := p.storeData(data.(string), &config.StorageConfig); err != nil {
 		return fmt.Errorf("failed to store data: %v", err)
 	}
 	return nil
@@ -75,7 +75,7 @@ func (p *Executor) extractData(data []byte, extractorConfig *store.JSONPathConfi
 	return string(data), nil
 }
 
-func (p *Executor) storeData(data interface{}, storeConfig *store.StorageConfig) error {
+func (p *Executor) storeData(data string, storeConfig *store.StorageConfig) error {
 	err := template.ParseConfig(storeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to parse config: %v", err)

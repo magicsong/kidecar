@@ -41,7 +41,7 @@ func (c *inKube) SetupWithManager(mgr api.SidecarManager) error {
 	return nil
 }
 
-func (c *inKube) storeInCurrentPod(data interface{}, config *InKubeConfig) error {
+func (c *inKube) storeInCurrentPod(data string, config *InKubeConfig) error {
 	currentPod, err := info.GetCurrentPod()
 	if err != nil {
 		return fmt.Errorf("failed to get current pod: %w", err)
@@ -59,6 +59,18 @@ func (c *inKube) storeInCurrentPod(data interface{}, config *InKubeConfig) error
 	if config.LabelKey != nil {
 		metadata["labels"] = map[string]interface{}{*config.LabelKey: data}
 	}
+	if policy, ok := config.GetPolicyOfState(data); ok {
+		if len(policy.Annotations) > 0 {
+			for key, value := range policy.Annotations {
+				metadata["annotations"].(map[string]interface{})[key] = value
+			}
+		}
+		if len(policy.Labels) > 0 {
+			for key, value := range policy.Labels {
+				metadata["labels"].(map[string]interface{})[key] = value
+			}
+		}
+	}
 	patchData["metadata"] = metadata
 	patchBytes, _ := json.Marshal(patchData)
 	err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -75,7 +87,7 @@ func (c *inKube) storeInCurrentPod(data interface{}, config *InKubeConfig) error
 }
 
 // Store implements Storage.
-func (c *inKube) Store(data interface{}, config interface{}) error {
+func (c *inKube) Store(data string, config interface{}) error {
 	myconfig, ok := config.(*InKubeConfig)
 	if !ok || myconfig == nil {
 		return fmt.Errorf("invalid in kube config type")
@@ -91,7 +103,7 @@ func (c *inKube) Store(data interface{}, config interface{}) error {
 	return c.storeInOtherObject(data, myconfig)
 }
 
-func (c *inKube) storeInOtherObject(data interface{}, myconfig *InKubeConfig) error {
+func (c *inKube) storeInOtherObject(data string, myconfig *InKubeConfig) error {
 	if myconfig.Target == nil && len(myconfig.MarkerPolices) < 1 {
 		return fmt.Errorf("invalid target or markerPolices")
 	}
@@ -107,7 +119,7 @@ func (c *inKube) storeInOtherObject(data interface{}, myconfig *InKubeConfig) er
 	return nil
 }
 
-func generatePatch(data interface{}, myconfig *InKubeConfig) []jsonpatch.JsonPatchOperation {
+func generatePatch(data string, myconfig *InKubeConfig) []jsonpatch.JsonPatchOperation {
 	patch := []jsonpatch.JsonPatchOperation{}
 	if myconfig.AnnotationKey != nil {
 		patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+*myconfig.AnnotationKey, data))
@@ -115,20 +127,15 @@ func generatePatch(data interface{}, myconfig *InKubeConfig) []jsonpatch.JsonPat
 	if myconfig.LabelKey != nil {
 		patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+*myconfig.LabelKey, data))
 	}
-	if len(myconfig.MarkerPolices) > 0 {
-		for _, policy := range myconfig.MarkerPolices {
-			if policy.State == fmt.Sprintf("%v", data) {
-				if len(policy.Labels) > 0 {
-					for key, value := range policy.Labels {
-						patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+key, value))
-					}
-				}
-				if len(policy.Annotations) > 0 {
-					for key, value := range policy.Annotations {
-						patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+key, value))
-					}
-				}
-				break
+	if policy, ok := myconfig.GetPolicyOfState(data); ok {
+		if len(policy.Annotations) > 0 {
+			for key, value := range policy.Annotations {
+				patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+key, value))
+			}
+		}
+		if len(policy.Labels) > 0 {
+			for key, value := range policy.Labels {
+				patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+key, value))
 			}
 		}
 	}

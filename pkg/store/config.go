@@ -22,6 +22,8 @@ type InKubeConfig struct {
 	AnnotationKey *string             `json:"annotationKey,omitempty"` // Pod 注解的键名
 	LabelKey      *string             `json:"labelKey,omitempty"`      // Pod 注解的键名
 	MarkerPolices []ProbeMarkerPolicy `json:"markerPolices,omitempty"` // 适用于 ProbeMarkerPolicy 的配置
+	// inner field
+	policyMap map[string]ProbeMarkerPolicy
 }
 
 // TargetKubeObject is the target kube object
@@ -69,7 +71,7 @@ type JSONPathConfig struct {
 	FieldType FieldType `json:"fieldType"` // 提取结果的数据类型
 }
 
-func (s *StorageConfig) StoreData(factory StorageFactory, data interface{}) error {
+func (s *StorageConfig) StoreData(factory StorageFactory, data string) error {
 	storage, err := factory.GetStorage(s.Type)
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %w", err)
@@ -106,6 +108,7 @@ func (t *TargetKubeObject) ToGvr() schema.GroupVersionResource {
 }
 
 func (c *InKubeConfig) IsValid() error {
+	c.buildPolicyMap()
 	if c.Target != nil {
 		if err := c.Target.IsValid(); err != nil {
 			return fmt.Errorf("invalid target: %w", err)
@@ -115,4 +118,25 @@ func (c *InKubeConfig) IsValid() error {
 		return fmt.Errorf("invalid annotationKey or labelKey or markerPolices")
 	}
 	return nil
+}
+
+func (c *InKubeConfig) buildPolicyMap() {
+	if len(c.MarkerPolices) < 1 {
+		return
+	}
+	c.policyMap = make(map[string]ProbeMarkerPolicy)
+	for _, policy := range c.MarkerPolices {
+		c.policyMap[policy.State] = policy
+	}
+}
+
+func (c *InKubeConfig) GetPolicyOfState(state string) (*ProbeMarkerPolicy, bool) {
+	if len(c.policyMap) < 1 {
+		return nil, false
+	}
+	p, ok := c.policyMap[state]
+	if !ok {
+		return nil, false
+	}
+	return &p, true
 }

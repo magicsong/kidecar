@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/magicsong/okg-sidecar/api"
-	"github.com/magicsong/okg-sidecar/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -36,12 +35,12 @@ func (p *promMetric) SetupWithManager(mgr api.SidecarManager) error {
 }
 
 // Store implements Storage.
-func (p *promMetric) Store(data interface{}, config interface{}) error {
+func (p *promMetric) Store(data string, config interface{}) error {
 	myconfig, ok := config.(*HTTPMetricConfig)
 	if !ok {
 		return fmt.Errorf("bad config of httpMetricConfig")
 	}
-	f, err := strconv.ParseFloat(utils.ConvertToString(data), 64)
+	f, err := strconv.ParseFloat(data, 64)
 	if err != nil {
 		return fmt.Errorf("bad data of httpMetricConfig, err: %w", err)
 	}
