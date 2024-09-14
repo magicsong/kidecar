@@ -23,7 +23,8 @@ type InKubeConfig struct {
 	LabelKey      *string             `json:"labelKey,omitempty"`      // Pod 注解的键名
 	MarkerPolices []ProbeMarkerPolicy `json:"markerPolices,omitempty"` // 适用于 ProbeMarkerPolicy 的配置
 	// inner field
-	policyMap map[string]ProbeMarkerPolicy
+	policyMap   map[string]ProbeMarkerPolicy
+	preprocessd bool
 }
 
 // TargetKubeObject is the target kube object
@@ -123,6 +124,9 @@ func (c *InKubeConfig) buildPolicyMap() {
 	if len(c.MarkerPolices) < 1 {
 		return
 	}
+	if c.preprocessd {
+		return
+	}
 	c.policyMap = make(map[string]ProbeMarkerPolicy)
 	for _, policy := range c.MarkerPolices {
 		c.policyMap[policy.State] = policy
@@ -141,28 +145,9 @@ func (c *InKubeConfig) GetPolicyOfState(state string) (*ProbeMarkerPolicy, bool)
 }
 
 func (c *InKubeConfig) Preprocess() {
-	if c.AnnotationKey != nil {
-		*c.AnnotationKey = rfc6901Encoder.Replace(*c.AnnotationKey)
-	}
-	if c.LabelKey != nil {
-		*c.LabelKey = rfc6901Encoder.Replace(*c.LabelKey)
-	}
-	if len(c.MarkerPolices) < 1 {
+	if c.preprocessd {
 		return
 	}
-	for _, policy := range c.MarkerPolices {
-		if len(policy.Annotations) > 0 {
-			for key, value := range policy.Annotations {
-				policy.Annotations[rfc6901Encoder.Replace(key)] = value
-				delete(policy.Annotations, key)
-			}
-		}
-		if len(policy.Labels) > 0 {
-			for key, value := range policy.Labels {
-				policy.Labels[rfc6901Encoder.Replace(key)] = value
-				delete(policy.Labels, key)
-			}
-		}
-	}
 	c.buildPolicyMap()
+	c.preprocessd = true
 }

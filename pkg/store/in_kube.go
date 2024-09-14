@@ -133,20 +133,20 @@ func (c *inKube) storeInOtherObject(data string, myconfig *InKubeConfig) error {
 func generatePatch(data string, myconfig *InKubeConfig) []jsonpatch.JsonPatchOperation {
 	patch := []jsonpatch.JsonPatchOperation{}
 	if myconfig.AnnotationKey != nil {
-		patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+*myconfig.AnnotationKey, data))
+		patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+rfc6901Encoder.Replace(*myconfig.AnnotationKey), data))
 	}
 	if myconfig.LabelKey != nil {
-		patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+*myconfig.LabelKey, data))
+		patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+rfc6901Encoder.Replace(*myconfig.LabelKey), data))
 	}
 	if policy, ok := myconfig.GetPolicyOfState(data); ok {
 		if len(policy.Annotations) > 0 {
 			for key, value := range policy.Annotations {
-				patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+key, value))
+				patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/annotations/"+rfc6901Encoder.Replace(key), value))
 			}
 		}
 		if len(policy.Labels) > 0 {
 			for key, value := range policy.Labels {
-				patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+key, value))
+				patch = append(patch, jsonpatch.NewOperation("replace", "/metadata/labels/"+rfc6901Encoder.Replace(key), value))
 			}
 		}
 	}
