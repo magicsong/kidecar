@@ -54,6 +54,17 @@ func GetCurrentPodNamespaceAndName() (*types.NamespacedName, error) {
 	}, nil
 }
 
+func GetCurrentPodInfo() (string, error) {
+	ns := os.Getenv("POD_NAMESPACE")
+	name := os.Getenv("POD_NAME")
+	if ns == "" || name == "" {
+		return "", fmt.Errorf("failed to get current pod namespace and name")
+	}
+
+	return fmt.Sprintf("%s-%s", ns, name), nil
+
+}
+
 var globalKubeInterface kubernetes.Interface
 
 func SetGlobalKubeInterface(k8sClient kubernetes.Interface) {
