@@ -37,6 +37,21 @@ plugins:
           #   path: "$.store.book[*].author"
           #   expectedValue: "John Doe"
     bootOrder: 1
+  hot_update:
+    name: hot_update
+    config:
+      loadPatchType: "signal"
+      fileDir: "/app/downloads"
+      signal:
+        signalName: "SIGHUP"
+        processName: "nginx: master process nginx"
+      storageConfig: # 存储配置
+        type: InKube
+        inKube:
+          annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
+
+    bootOrder: 1
+
 restartPolicy: Always
 resources:
   CPU: 100m
