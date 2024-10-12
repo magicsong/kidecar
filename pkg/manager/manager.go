@@ -3,7 +3,7 @@ package manager
 import (
 	"fmt"
 
-	"github.com/magicsong/okg-sidecar/api"
+	"github.com/magicsong/kidecar/api"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"

@@ -3,8 +3,9 @@ package store
 import (
 	"context"
 	"fmt"
-	"github.com/magicsong/okg-sidecar/pkg/constants"
-	"github.com/magicsong/okg-sidecar/pkg/info"
+
+	"github.com/magicsong/kidecar/pkg/constants"
+	"github.com/magicsong/kidecar/pkg/info"
 	"gopkg.in/yaml.v3"
 )
 

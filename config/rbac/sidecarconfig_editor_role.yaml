@@ -1,0 +1,27 @@
+# permissions for end users to edit sidecarconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: kidecar
+    app.kubernetes.io/managed-by: kustomize
+  name: sidecarconfig-editor-role
+rules:
+- apiGroups:
+  - serverless.vke.volcengine.com
+  resources:
+  - sidecarconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - serverless.vke.volcengine.com
+  resources:
+  - sidecarconfigs/status
+  verbs:
+  - get

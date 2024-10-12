@@ -1,6 +1,6 @@
 package httpprobe
 
-import "github.com/magicsong/okg-sidecar/pkg/store"
+import "github.com/magicsong/kidecar/pkg/store"
 
 type EndpointConfig struct {
 	URL                string                `json:"url"`                // 目标 URL

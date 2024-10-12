@@ -3,7 +3,7 @@ package store
 import (
 	"fmt"
 
-	"github.com/magicsong/okg-sidecar/api"
+	"github.com/magicsong/kidecar/api"
 )
 
 type StorageFactory interface {

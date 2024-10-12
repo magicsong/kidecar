@@ -1,0 +1,23 @@
+# permissions for end users to view sidecarconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: kidecar
+    app.kubernetes.io/managed-by: kustomize
+  name: sidecarconfig-viewer-role
+rules:
+- apiGroups:
+  - serverless.vke.volcengine.com
+  resources:
+  - sidecarconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - serverless.vke.volcengine.com
+  resources:
+  - sidecarconfigs/status
+  verbs:
+  - get

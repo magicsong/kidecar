@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/magicsong/okg-sidecar/pkg/info"
+	"github.com/magicsong/kidecar/pkg/info"
 	corev1 "k8s.io/api/core/v1"
 )
 

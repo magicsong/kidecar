@@ -1,9 +1,9 @@
 package plugins
 
 import (
-	"github.com/magicsong/okg-sidecar/api"
-	"github.com/magicsong/okg-sidecar/pkg/plugins/hot_update"
-	httpprobe "github.com/magicsong/okg-sidecar/pkg/plugins/http_probe"
+	"github.com/magicsong/kidecar/api"
+	"github.com/magicsong/kidecar/pkg/plugins/hot_update"
+	httpprobe "github.com/magicsong/kidecar/pkg/plugins/http_probe"
 )
 
 var PluginRegistry = make(map[string]api.Plugin)

@@ -1,6 +1,6 @@
 package store
 
-import "github.com/magicsong/okg-sidecar/api"
+import "github.com/magicsong/kidecar/api"
 
 type Storage interface {
 	IsInitialized() bool

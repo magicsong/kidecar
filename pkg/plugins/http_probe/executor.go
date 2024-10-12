@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/magicsong/okg-sidecar/pkg/extractor"
-	"github.com/magicsong/okg-sidecar/pkg/store"
-	"github.com/magicsong/okg-sidecar/pkg/template"
+	"github.com/magicsong/kidecar/pkg/extractor"
+	"github.com/magicsong/kidecar/pkg/store"
+	"github.com/magicsong/kidecar/pkg/template"
 )
 
 // Executor holds the HTTP client and provides methods for probing

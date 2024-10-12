@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/magicsong/okg-sidecar/api"
+	"github.com/magicsong/kidecar/api"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

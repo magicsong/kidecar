@@ -2,11 +2,12 @@ package store
 
 import (
 	"context"
-	"github.com/magicsong/okg-sidecar/pkg/constants"
 	"testing"
 
+	"github.com/magicsong/kidecar/pkg/constants"
+
 	"github.com/agiledragon/gomonkey/v2"
-	"github.com/magicsong/okg-sidecar/pkg/info"
+	"github.com/magicsong/kidecar/pkg/info"
 	corev1 "k8s.io/api/core/v1"
 )
 

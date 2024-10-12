@@ -3,10 +3,11 @@ package hot_update
 import (
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
-	"github.com/magicsong/okg-sidecar/api"
-	"github.com/magicsong/okg-sidecar/pkg/store"
 	"net/http"
+
+	"github.com/go-logr/logr"
+	"github.com/magicsong/kidecar/api"
+	"github.com/magicsong/kidecar/pkg/store"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 

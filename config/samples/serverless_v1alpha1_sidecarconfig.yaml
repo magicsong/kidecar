@@ -1,0 +1,14 @@
+apiVersion: serverless.vke.volcengine.com/v1alpha1
+kind: SidecarConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: kidecar
+    app.kubernetes.io/managed-by: kustomize
+  name: sidecarconfig-sample
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  namespace: default
+  serviceAccountName: sidecar-service-account
+  shareProcessNamespace: true

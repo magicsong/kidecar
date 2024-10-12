@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/magicsong/okg-sidecar/api"
-	"github.com/magicsong/okg-sidecar/pkg/utils"
+	"github.com/magicsong/kidecar/api"
+	"github.com/magicsong/kidecar/pkg/utils"
 	"gopkg.in/yaml.v3"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )

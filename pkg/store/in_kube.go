@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/magicsong/okg-sidecar/api"
-	"github.com/magicsong/okg-sidecar/pkg/info"
+	"github.com/magicsong/kidecar/api"
+	"github.com/magicsong/kidecar/pkg/info"
 	"gomodules.xyz/jsonpatch/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

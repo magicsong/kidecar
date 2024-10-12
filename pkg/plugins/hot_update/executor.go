@@ -2,8 +2,6 @@ package hot_update
 
 import (
 	"fmt"
-	"github.com/magicsong/okg-sidecar/pkg/store"
-	"golang.org/x/mod/semver"
 	"io"
 	"net/http"
 	"os"
@@ -12,7 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/magicsong/okg-sidecar/pkg/template"
+	"github.com/magicsong/kidecar/pkg/store"
+	"golang.org/x/mod/semver"
+
+	"github.com/magicsong/kidecar/pkg/template"
 )
 
 func (h *hotUpdate) hotUpdateHandle(w http.ResponseWriter, r *http.Request) {

@@ -1,36 +1,33 @@
-# 使用Alpine Linux作为基础镜像
-FROM golang:1.22-alpine AS builder
+# Build the manager binary
+FROM golang:1.22 AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
-# 设置工作目录
-WORKDIR /app
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
-# 复制Go模块文件
-COPY go.mod go.sum ./
+# Copy the go source
+COPY cmd/main.go cmd/main.go
+COPY api/ api/
+COPY internal/controller/ internal/controller/
+COPY pkg/ pkg/
+# Build
+# the GOARCH has not a default value to allow the binary be built according to the host where the command
+# was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
+# the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
+# by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
 
-# 复制源代码
-COPY vendor vendor
-COPY cmd cmd
-COPY pkg pkg
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/manager .
+USER 65532:65532
 
-
-# 构建Go应用
-# 构建Go应用
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o main cmd/main.go
-
-# 使用轻量级的Alpine Linux作为运行时镜像
-FROM alpine:3.15
-
-# 安装必要的依赖项
-RUN apk add --no-cache ca-certificates
-
-# 设置工作目录
-WORKDIR /app
-
-# 从构建阶段复制可执行文件
-COPY --from=builder /app/main .
-
-# 暴露端口（如果需要）
-EXPOSE 8080
-
-# 运行应用
-CMD ["./main"]
+ENTRYPOINT ["/manager"]
