@@ -49,3 +49,7 @@ func ConvertToString(data interface{}) string {
 	}
 	return fmt.Sprintf("%v", data)
 }
+
+func ConvertAnyToPtr[T any](data T) *T {
+	return &data
+}

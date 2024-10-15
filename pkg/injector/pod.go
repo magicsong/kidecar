@@ -3,9 +3,13 @@ package injector
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/magicsong/kidecar/api/v1alpha1"
+	"github.com/magicsong/kidecar/pkg/utils"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/util/retry"
@@ -15,6 +19,13 @@ import (
 
 const (
 	InjectAnnotationKey = "sidecarconfig.kidecar.io/inject"
+
+	KidecarConfigmapName = "kidecar-config"
+)
+
+const (
+	EnvKidecarImage     string = "KIDECAR_IMAGE"
+	DefaultKidecarImage string = "113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar:v5"
 )
 
 func GetSidecarConfigOfPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) (*v1alpha1.SidecarConfig, error) {
@@ -93,8 +104,17 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 		return nil
 	}
 	injectServiceAccount(pod, config.Spec.Injection.ServiceAccountName, config.Spec.Injection.ForceInjectServiceAccount != nil && *config.Spec.Injection.ForceInjectServiceAccount)
-	addContainers(pod, config.Spec.Injection.Containers)
-	addInitContainers(pod, config.Spec.Injection.InitContainers)
+	if config.Spec.Injection.InjectKidecar {
+		addKidecarContainer(pod, config)
+		log.Info("inject kidecar container")
+		defer log.Info("inject kidecar container DONE")
+		if err := createConfigmap(ctx, ctrlclient, pod.Namespace, config); err != nil {
+			return err
+		}
+	} else {
+		addContainers(pod, config.Spec.Injection.Containers)
+		addInitContainers(pod, config.Spec.Injection.InitContainers)
+	}
 	addVolumes(pod, config.Spec.Injection.Volumes)
 	addVolumeMounts(pod, config.Spec.Injection.VolumeMounts)
 	shareProcessNamespace(pod, config.Spec.Injection.ShareProcessNamespace != nil && *config.Spec.Injection.ShareProcessNamespace)
@@ -172,4 +192,99 @@ func addAnnotations(pod *corev1.Pod, annotations map[string]string) {
 		pod.Annotations[k] = v
 	}
 	pod.Annotations[InjectAnnotationKey] = "true"
+}
+
+func getKidecarImage() string {
+	image := os.Getenv(EnvKidecarImage)
+	if image == "" {
+		return DefaultKidecarImage
+	}
+	return image
+}
+
+func addKidecarContainer(pod *corev1.Pod, SidecarConfig *v1alpha1.SidecarConfig) {
+	kContainer := corev1.Container{
+		Name:  "kidecar",
+		Image: getKidecarImage(),
+		Env: []corev1.EnvVar{
+			//PodName
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+			//PodNamespace
+			{
+				Name: "POD_NAMESPACE",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.namespace",
+					},
+				},
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      KidecarConfigmapName,
+				MountPath: "/opt/kidecar",
+			},
+		},
+	}
+	if SidecarConfig.Spec.Injection.UseKubeNativeSidecar {
+		kContainer.RestartPolicy = utils.ConvertAnyToPtr(corev1.ContainerRestartPolicyAlways)
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, kContainer)
+	} else {
+		pod.Spec.Containers = append(pod.Spec.Containers, kContainer)
+	}
+
+	// add volumes
+	if pod.Spec.Volumes == nil {
+		pod.Spec.Volumes = []corev1.Volume{}
+	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+		Name: KidecarConfigmapName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: KidecarConfigmapName,
+				},
+			},
+		},
+	})
+}
+
+func buildConfigYaml(SidecarConfig *v1alpha1.SidecarConfig) (string, error) {
+	// 将结构体转换为 YAML
+	yamlData, err := yaml.Marshal(SidecarConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal SidecarConfig to YAML: %v", err)
+	}
+	return string(yamlData), nil
+}
+
+func createConfigmap(ctx context.Context, ctrlclient client.Client, namespace string, SidecarConfig *v1alpha1.SidecarConfig) error {
+	configYaml, err := buildConfigYaml(SidecarConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal SidecarConfig to YAML: %v", err)
+	}
+	configmap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      KidecarConfigmapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"config.yaml": configYaml,
+		},
+	}
+	if err := ctrlclient.Create(ctx, configmap); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return nil
+		}
+		logf.FromContext(ctx).Error(err, "failed to create configmap")
+		return err
+	}
+	return nil
 }

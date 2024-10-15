@@ -35,6 +35,9 @@ type InjectConfig struct {
 	// InjectKidecar indicates whether to inject the kidecar instead of user define
 	InjectKidecar bool `json:"injectSidecar,omitempty"`
 
+	// UseKubeNativeSidecar indicates whether to use the kube native sidecar, kube version must higher than 1.28
+	UseKubeNativeSidecar bool `json:"useKubeNativeSidecar,omitempty"`
+
 	// Namespace sidecarSet will only match the pods in the namespace
 	// otherwise, match pods in all namespaces(in cluster)
 	Namespace string `json:"namespace,omitempty"`
