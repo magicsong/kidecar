@@ -19,17 +19,21 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// SidecarConfigSpec defines the desired state of SidecarConfig
-type SidecarConfigSpec struct {
+// InjectConfig defines the configuration for the sidecar injection
+type InjectConfig struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	// selector is a label query over pods that should be injected
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
+
+	// InjectKidecar indicates whether to inject the kidecar instead of user define
+	InjectKidecar bool `json:"injectSidecar,omitempty"`
 
 	// Namespace sidecarSet will only match the pods in the namespace
 	// otherwise, match pods in all namespaces(in cluster)
@@ -69,6 +73,30 @@ type SidecarConfigSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// ShareProcessNamespace indicates whether to share the process namespace with the pod
 	ShareProcessNamespace *bool `json:"shareProcessNamespace,omitempty"`
+}
+
+// SidecarConfigSpec defines the desired state of SidecarConfig
+type SidecarConfigSpec struct {
+	// Injection contains the configuration settings for the injection process.
+	Injection InjectConfig `json:"injection"`
+	// Kidecar contains the specific configuration settings for the Kidecar system.
+	Kidecar KidecarConfig `json:"kidecar"`
+}
+
+type KidecarConfig struct {
+	Plugins           []PluginConfig    `json:"plugins"`           // 启动的插件及其配置
+	RestartPolicy     string            `json:"restartPolicy"`     // 重启策略
+	Resources         map[string]string `json:"resources"`         // Sidecar 所需的资源
+	SidecarStartOrder string            `json:"sidecarStartOrder"` // Sidecar 的启动顺序，是在主容器之后还是之前
+}
+
+// PluginConfig 表示插件的配置
+type PluginConfig struct {
+	Name string `json:"name"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Config    runtime.RawExtension `json:"config"`
+	BootOrder int                  `json:"bootOrder"`
 }
 
 // SidecarConfigStatus defines the observed state of SidecarConfig

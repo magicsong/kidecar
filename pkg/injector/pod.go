@@ -35,8 +35,8 @@ func GetSidecarConfigOfPod(ctx context.Context, pod *corev1.Pod, ctrlclient clie
 }
 
 func Match(pod *corev1.Pod, sidecarconfig *v1alpha1.SidecarConfigSpec, ctrlclient client.Client) (bool, error) {
-	if sidecarconfig.NamespaceSelector != nil {
-		if matched, err := MatchNamespace(pod.Namespace, sidecarconfig.NamespaceSelector, ctrlclient); err != nil {
+	if sidecarconfig.Injection.NamespaceSelector != nil {
+		if matched, err := MatchNamespace(pod.Namespace, sidecarconfig.Injection.NamespaceSelector, ctrlclient); err != nil {
 			return false, err
 		} else {
 			if !matched {
@@ -44,8 +44,8 @@ func Match(pod *corev1.Pod, sidecarconfig *v1alpha1.SidecarConfigSpec, ctrlclien
 			}
 		}
 	}
-	if sidecarconfig.Selector != nil {
-		if matched, err := MatchLabelSelector(sidecarconfig.Selector, pod.Labels); err != nil {
+	if sidecarconfig.Injection.Selector != nil {
+		if matched, err := MatchLabelSelector(sidecarconfig.Injection.Selector, pod.Labels); err != nil {
 			return false, err
 		} else {
 			if !matched {
@@ -89,15 +89,15 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 		return err
 	}
 	if config == nil {
-		log.Info("no SidecarConfig matched, skip injecting")
+		log.Info("no SidecarConfig.Injection matched, skip injecting")
 		return nil
 	}
-	injectServiceAccount(pod, config.Spec.ServiceAccountName, config.Spec.ForceInjectServiceAccount != nil && *config.Spec.ForceInjectServiceAccount)
-	addContainers(pod, config.Spec.Containers)
-	addInitContainers(pod, config.Spec.InitContainers)
-	addVolumes(pod, config.Spec.Volumes)
-	addVolumeMounts(pod, config.Spec.VolumeMounts)
-	shareProcessNamespace(pod, config.Spec.ShareProcessNamespace != nil && *config.Spec.ShareProcessNamespace)
+	injectServiceAccount(pod, config.Spec.Injection.ServiceAccountName, config.Spec.Injection.ForceInjectServiceAccount != nil && *config.Spec.Injection.ForceInjectServiceAccount)
+	addContainers(pod, config.Spec.Injection.Containers)
+	addInitContainers(pod, config.Spec.Injection.InitContainers)
+	addVolumes(pod, config.Spec.Injection.Volumes)
+	addVolumeMounts(pod, config.Spec.Injection.VolumeMounts)
+	shareProcessNamespace(pod, config.Spec.Injection.ShareProcessNamespace != nil && *config.Spec.Injection.ShareProcessNamespace)
 	addAnnotations(pod, config.Annotations)
 
 	// update sidecar config status
@@ -111,7 +111,7 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 	})
 	if err != nil {
 		// will continue to inject even if failed to update status
-		log.Error(err, "failed to update SidecarConfig status after retrying")
+		log.Error(err, "failed to update SidecarConfig.Injection status after retrying")
 	}
 	return nil
 }
