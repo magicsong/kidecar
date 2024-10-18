@@ -17,7 +17,7 @@ import (
 
 const (
 	InjectAnnotationKey = "sidecarconfig.kidecar.io/inject"
-
+	ConfigmapHashKey   = "sidecarconfig.kidecar.io/hash"
 	KidecarConfigmapName = "kidecar-config"
 )
 
@@ -106,7 +106,7 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 		addKidecarContainer(pod, config)
 		log.Info("inject kidecar container")
 		defer log.Info("inject kidecar container DONE")
-		if err := createConfigmap(ctx, ctrlclient, pod.Namespace, config); err != nil {
+		if err := EnsureConfigmap(ctx, ctrlclient, pod.Namespace, config); err != nil {
 			return err
 		}
 	} else {

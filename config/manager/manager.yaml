@@ -70,6 +70,9 @@ spec:
           capabilities:
             drop:
             - "ALL"
+        env:
+          - name: KIDECAR_IMAGE
+            value: $KIDECAR_IMG
         livenessProbe:
           httpGet:
             path: /healthz

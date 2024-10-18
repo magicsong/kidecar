@@ -1,5 +1,7 @@
 # Image URL to use all building/pushing image targets
-IMG ?= 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar:v1
+IMG ?= 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar-manager:v1
+KIDECAR_IMG ?= 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar:v1
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
 
@@ -202,5 +204,8 @@ endef
 .PHONY: dev
 dev: generate manifests docker-push deploy
 
-run-sidecar: fmt vet
+run-kidecar: fmt vet
 	go run cmd/sidecar/main.go --config=./config.yaml
+build-kidecar: fmt vet
+	$(CONTAINER_TOOL) build -t ${KIDECAR_IMG} . -f sidecar.Dockerfile
+	$(CONTAINER_TOOL) push ${KIDECAR_IMG}

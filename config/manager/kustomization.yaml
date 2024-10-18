@@ -6,3 +6,4 @@ images:
 - name: controller
   newName: 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar
   newTag: v5
+
