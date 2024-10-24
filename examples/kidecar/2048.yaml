@@ -1,20 +1,14 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: hot-update-demo
   namespace: default
 spec:
-  progressDeadlineSeconds: 600
+  serviceName: "hot-update-demo"
   replicas: 1
-  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: hot-update-demo
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
       annotations:
@@ -39,12 +33,10 @@ spec:
           terminationMessagePolicy: File
           volumeMounts:
             - mountPath: /var/www/html
-              name: share-data # 临时存储共享目录
-        - image: cr-helm2-cn-beijing.cr.volces.com/kruise/plugin-sidecar:v8
+              name: share-data # 持久化存储共享目录
+        - image: cr-helm2-cn-beijing.cr.volces.com/kruise/plugin-sidecar:v9
           imagePullPolicy: IfNotPresent
           name: sidecar
-          ## command: [ "/bin/sleep" ]
-          ## args: [ "999999" ]
           env:
             - name: PROCESS_NAME # Sidecar 会通过该变量拿到主容器进程名字，进而找到 PID 并发送信号
               value: 'nginx: master process nginx'
@@ -74,7 +66,7 @@ spec:
           tty: true
           volumeMounts:
             - mountPath: /app/downloads
-              name: share-data # 临时存储共享目录
+              name: share-data # 持久化存储共享目录
             - name: config-volume
               mountPath: /opt/sidecar/config.yaml
               subPath: config.yaml
@@ -86,79 +78,8 @@ spec:
       shareProcessNamespace: true  # 关键配置，让两个容器共享进程命名空间
       terminationGracePeriodSeconds: 30
       volumes:
-        - emptyDir: {}
-          name: share-data
         - name: config-volume
           configMap:
             name: sidecar-config
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: sidecar-config
-data:
-  config.yaml: |-
-    plugins:
-      hot_update:
-        name: hot_update
-        config:
-          loadPatchType: "signal"
-          fileDir: "/app/downloads"
-          signal:
-            signalName: "SIGHUP"
-            processName: "nginx: master process nginx"
-          storageConfig: # 存储配置
-            type: InKube
-            inKube:
-              annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
-        bootOrder: 1
-    restartPolicy: Always
-    resources:
-      CPU: 100m
-      Memory: 128Mi
-    sidecarStartOrder: Before
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: sidecar-result
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: sidecar-role
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - configmaps
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: sidecar-sa       # 为你的pod设置serviceAccount名字
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: sidecar-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: sidecar-role
-subjects:
-  - kind: ServiceAccount
-    name: sidecar-sa
-    namespace: default
+        - emptyDir: {}
+          name: share-data
