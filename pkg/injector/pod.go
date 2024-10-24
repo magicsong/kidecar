@@ -10,20 +10,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
-	InjectAnnotationKey = "sidecarconfig.kidecar.io/inject"
-	ConfigmapHashKey   = "sidecarconfig.kidecar.io/hash"
+	InjectAnnotationKey  = "sidecarconfig.kidecar.io/inject"
+	ConfigmapHashKey     = "sidecarconfig.kidecar.io/hash"
 	KidecarConfigmapName = "kidecar-config"
 )
 
 const (
 	EnvKidecarImage     string = "KIDECAR_IMAGE"
 	DefaultKidecarImage string = "113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar:v5"
+
+	serviceAccountTokenMountPath = "/var/run/secrets/kubernetes.io/serviceaccount"
 )
 
 func GetSidecarConfigOfPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) (*v1alpha1.SidecarConfig, error) {
@@ -31,12 +34,12 @@ func GetSidecarConfigOfPod(ctx context.Context, pod *corev1.Pod, ctrlclient clie
 	if err := ctrlclient.List(ctx, sidecarconfigList); err != nil {
 		return nil, fmt.Errorf("failed to list SidecarConfig: %v", err)
 	}
-	for _, sidecarconfig := range sidecarconfigList.Items {
+	for index, sidecarconfig := range sidecarconfigList.Items {
 		if matched, err := Match(pod, &sidecarconfig.Spec, ctrlclient); err != nil {
 			return nil, fmt.Errorf("failed to match SidecarConfig: %v", err)
 		} else {
 			if matched {
-				return &sidecarconfig, nil
+				return &sidecarconfigList.Items[index], nil
 			}
 		}
 	}
@@ -101,7 +104,15 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 		log.Info("no SidecarConfig.Injection matched, skip injecting")
 		return nil
 	}
-	injectServiceAccount(pod, config.Spec.Injection.ServiceAccountName, config.Spec.Injection.ForceInjectServiceAccount != nil && *config.Spec.Injection.ForceInjectServiceAccount)
+	// check inject annotation
+	if _, ok := pod.Annotations[InjectAnnotationKey]; ok {
+		log.Info("pod already injected, skip injecting")
+		return nil
+	}
+	if err := injectServiceAccount(pod, config.Spec.Injection.ServiceAccountName, config.Spec.Injection.ForceInjectServiceAccount != nil && *config.Spec.Injection.ForceInjectServiceAccount, ctrlclient); err != nil {
+		log.Error(err, "failed to inject service account")
+		return err
+	}
 	if config.Spec.Injection.InjectKidecar {
 		addKidecarContainer(pod, config)
 		log.Info("inject kidecar container")
@@ -110,6 +121,7 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 			return err
 		}
 	} else {
+		log.Info("skip injecting kidecar container, inject user defined sidecar")
 		addContainers(pod, config.Spec.Injection.Containers)
 		addInitContainers(pod, config.Spec.Injection.InitContainers)
 	}
@@ -134,7 +146,14 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 	return nil
 }
 
-func injectServiceAccount(pod *corev1.Pod, serviceAccountName string, force bool) {
+func injectServiceAccount(pod *corev1.Pod, serviceAccountName string, force bool, client client.Client) error {
+	// check service account exist
+	if serviceAccountName != "" {
+		sa := &corev1.ServiceAccount{}
+		if err := client.Get(context.Background(), types.NamespacedName{Name: serviceAccountName, Namespace: pod.Namespace}, sa); err != nil {
+			return fmt.Errorf("failed to get service account %s: %v", serviceAccountName, err)
+		}
+	}
 	// be sure to inject the serviceAccountName before adding any volumeMounts, because we must prune out any existing
 	// volumeMounts that were added to support the default service account. Because this removal is by index, we splice
 	// them out before appending new volumes at the end.
@@ -144,6 +163,20 @@ func injectServiceAccount(pod *corev1.Pod, serviceAccountName string, force bool
 	if force {
 		pod.Spec.ServiceAccountName = serviceAccountName
 	}
+	for i, container := range pod.Spec.Containers {
+		// remove system injected volumeMounts
+		for j, volumeMount := range container.VolumeMounts {
+			if volumeMount.MountPath == serviceAccountTokenMountPath {
+				if len(container.VolumeMounts) == 1 {
+					pod.Spec.Containers[i].VolumeMounts = []corev1.VolumeMount{}
+				} else {
+					pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts[:j], pod.Spec.Containers[i].VolumeMounts[j+1:]...)
+				}
+				break
+			}
+		}
+	}
+	return nil
 }
 func addContainers(pod *corev1.Pod, containers []corev1.Container) {
 	if len(containers) == 0 {
@@ -253,4 +286,3 @@ func addKidecarContainer(pod *corev1.Pod, SidecarConfig *v1alpha1.SidecarConfig)
 		},
 	})
 }
-

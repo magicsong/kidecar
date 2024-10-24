@@ -5,5 +5,8 @@ kind: Kustomization
 images:
 - name: controller
   newName: 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar
-  newTag: v5
-
+  newTag: v5.6
+patches:
+  - path: env_path.yaml
+    target:
+      kind: Deployment

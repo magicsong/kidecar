@@ -33,7 +33,7 @@ type InjectConfig struct {
 	Selector *metav1.LabelSelector `json:"selector,omitempty"`
 
 	// InjectKidecar indicates whether to inject the kidecar instead of user define
-	InjectKidecar bool `json:"injectSidecar,omitempty"`
+	InjectKidecar bool `json:"injectKidecar,omitempty"`
 
 	// UseKubeNativeSidecar indicates whether to use the kube native sidecar, kube version must higher than 1.28
 	UseKubeNativeSidecar bool `json:"useKubeNativeSidecar,omitempty"`
@@ -121,7 +121,7 @@ type SidecarConfigStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=scc
+// +kubebuilder:resource:shortName=scc,scope="Cluster"
 // +kubebuilder:printcolumn:name="MatchedPods",type="integer",JSONPath=".status.matchedPods"
 // +kubebuilder:printcolumn:name="UpdatedPods",type="integer",JSONPath=".status.updatedPods"
 // +kubebuilder:printcolumn:name="ReadyPods",type="integer",JSONPath=".status.readyPods"

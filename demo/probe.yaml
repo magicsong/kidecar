@@ -1,0 +1,93 @@
+apiVersion: serverless.vke.volcengine.com/v1alpha1
+kind: SidecarConfig
+metadata:
+  name: probe-sample
+spec:
+  injection:
+    selector:
+      matchLabels:
+        app: kidecar-game
+    namespace: default
+    serviceAccountName: sidecar-service-account
+    shareProcessNamespace: true
+    useKubeNativeSidecar: true
+    injectKidecar: true
+  kidecar:
+    plugins:
+    - name: http_probe
+      config:
+        endpoints:
+          - url: "http://localhost:8080"               # 目标 URL
+            method: "GET"                           # HTTP 方法
+            # headers:                               # 请求头
+            #   Content-Type: "application/json"
+            #   Authorization: "Bearer your_token"
+            timeout: 30                             # 超时时间（秒）
+            expectedStatusCode: 200                 # 预期的 HTTP 状态码
+            storageConfig:                          # 存储配置
+              type: InKube
+              inKube:
+              #annotationKey: http_probe
+                target:
+                    group:  game.kruise.io
+                    version: v1alpha1
+                    resource: gameservers
+                    name: ${SELF:POD_NAME}
+                    namespace: ${SELF:POD_NAMESPACE}
+                jsonPath: /spec/opsState
+                markerPolices:
+                  - state: idle
+                    labels:
+                      gameserver-idle: 'true'
+                    annotations:
+                      controller.kubernetes.io/pod-deletion-cost: '-10'
+                  - state: allocated
+                    labels:
+                      gameserver-idle: 'false'
+                    annotations:
+                      controller.kubernetes.io/pod-deletion-cost: '10'
+
+            # jsonPathConfig:                         # JSONPath 配置
+            #   path: "$.store.book[*].author"
+            #   expectedValue: "John Doe"
+      bootOrder: 1
+    - name: hot_update
+      config:
+        loadPatchType: "signal"
+        fileDir: "/app/downloads"
+        signal:
+          signalName: "SIGHUP"
+          processName: "nginx: master process nginx"
+        storageConfig: # 存储配置
+          type: InKube
+          inKube:
+            annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
+      bootOrder: 1
+    restartPolicy: Always
+    resources:
+      CPU: 100m
+      Memory: 128Mi
+    sidecarStartOrder: Before
+
+---
+##service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sidecar-service-account
+  namespace: default
+---
+##rolebinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sidecar-rolebinding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: sidecar-service-account
+  namespace: default

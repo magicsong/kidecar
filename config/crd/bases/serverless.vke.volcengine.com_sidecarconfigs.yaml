@@ -14,7 +14,7 @@ spec:
     shortNames:
     - scc
     singular: sidecarconfig
-  scope: Namespaced
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.matchedPods
@@ -2917,7 +2917,7 @@ spec:
                       - name
                       type: object
                     type: array
-                  injectSidecar:
+                  injectKidecar:
                     description: InjectKidecar indicates whether to inject the kidecar
                       instead of user define
                     type: boolean
@@ -3030,6 +3030,10 @@ spec:
                   shareProcessNamespace:
                     description: ShareProcessNamespace indicates whether to share
                       the process namespace with the pod
+                    type: boolean
+                  useKubeNativeSidecar:
+                    description: UseKubeNativeSidecar indicates whether to use the
+                      kube native sidecar, kube version must higher than 1.28
                     type: boolean
                   volumeMounts:
                     description: VolumeMounts is the list of VolumeMounts that can

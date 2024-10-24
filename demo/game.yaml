@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kidecar-game-deployment
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kidecar-game
+  template:
+    metadata:
+      labels:
+        app: kidecar-game
+    spec:
+      containers:
+      - name: kidecar-game
+        image: 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar-game:v1
+        ports:
+        - containerPort: 14005
