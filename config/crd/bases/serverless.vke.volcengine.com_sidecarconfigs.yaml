@@ -3031,6 +3031,10 @@ spec:
                     description: ShareProcessNamespace indicates whether to share
                       the process namespace with the pod
                     type: boolean
+                  useKubeNativeSidecar:
+                    description: UseKubeNativeSidecar indicates whether to use the
+                      kube native sidecar, kube version must higher than 1.28
+                    type: boolean
                   volumeMounts:
                     description: VolumeMounts is the list of VolumeMounts that can
                       be mounted by sidecar containers
