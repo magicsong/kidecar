@@ -16,7 +16,7 @@ import (
 var configPath string
 
 func init() {
-	flag.StringVar(&configPath, "config", "/opt/sidecar/config.yaml", "config file path")
+	flag.StringVar(&configPath, "config", "/opt/kidecar/config.yaml", "config file path")
 }
 
 func main() {
