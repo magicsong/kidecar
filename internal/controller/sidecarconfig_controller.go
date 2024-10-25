@@ -39,6 +39,7 @@ type SidecarConfigReconciler struct {
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups="",resources=pods/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=list;get;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

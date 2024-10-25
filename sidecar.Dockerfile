@@ -8,14 +8,14 @@ WORKDIR /app
 COPY go.mod go.sum ./
 
 # 复制源代码
-COPY vendor vendor
+#COPY vendor vendor
 COPY api api
 COPY cmd cmd
 COPY pkg pkg
 
 # 构建Go应用
 # 构建Go应用
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o main cmd/sidecar/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main cmd/sidecar/main.go
 
 # 使用轻量级的Alpine Linux作为运行时镜像
 FROM alpine:3.15
