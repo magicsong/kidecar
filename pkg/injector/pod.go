@@ -256,6 +256,11 @@ func addKidecarContainer(pod *corev1.Pod, SidecarConfig *v1alpha1.SidecarConfig)
 					},
 				},
 			},
+			// PROCESS_NAME
+			{
+				Name:  "PROCESS_NAME",
+				Value: "nginx: master process nginx",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
