@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hot-update-demo
+  namespace: default
+spec:
+  serviceName: "hot-update-demo"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hot-update-demo
+  template:
+    metadata:
+      annotations:
+        vci.volcengine.com/tls-enable: "false"
+        vke.volcengine.com/burst-to-vci: enforce #该方案可以在 VCI 中使用
+      labels:
+        app: hot-update-demo
+    spec:
+      containers:
+        - image: cr-demo-cn-beijing.cr.volces.com/guox/2048
+          imagePullPolicy: Always
+          name: game-room-r9001
+          ports:
+            - containerPort: 80
+              name: game
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/www/html
+              name: share-data # 持久化存储共享目录
+        - image: cr-helm2-cn-beijing.cr.volces.com/kruise/plugin-sidecar:v9
+          imagePullPolicy: IfNotPresent
+          name: sidecar
+          env:
+            - name: PROCESS_NAME # Sidecar 会通过该变量拿到主容器进程名字，进而找到 PID 并发送信号
+              value: 'nginx: master process nginx'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - containerPort: 5000
+              name: reloader
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            capabilities:
+              add:
+                - SYS_PTRACE # 关键配置，让两个容器共享进程命名空间需要一定的权限支持
+          stdin: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          tty: true
+          volumeMounts:
+            - mountPath: /app/downloads
+              name: share-data # 持久化存储共享目录
+            - name: config-volume
+              mountPath: /opt/sidecar/config.yaml
+              subPath: config.yaml
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      serviceAccountName: sidecar-sa
+      securityContext: {}
+      shareProcessNamespace: true  # 关键配置，让两个容器共享进程命名空间
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: config-volume
+          configMap:
+            name: sidecar-config
+        - emptyDir: {}
+          name: share-data
+
+---
+apiVersion: serverless.vke.volcengine.com/v1alpha1
+kind: SidecarConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: kidecar
+  name: sidecarconfig-sample
+spec:
+  injection:
+    selector:
+      matchLabels:
+        app: myapp
+    injectSidecar: true
+    namespaceSelector:
+      matchLabels:
+        app: myapp
+    serviceAccountName: kidecar-sa
+    shareProcessNamespace: true
+  kidecar:
+    plugins:
+      hot_update:
+        name: hot_update
+        config:
+          loadPatchType: "signal"
+          fileDir: "/app/downloads"
+          signal:
+            signalName: "SIGHUP"
+            processName: "nginx: master process nginx"
+          storageConfig: # 存储配置
+            type: InKube
+            inKube:
+              annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
+        bootOrder: 1
+      restartPolicy: Always
+      resources:
+        CPU: 100m
+        Memory: 128Mi
+      sidecarStartOrder: Before
+---
+##service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sidecar-service-account
+  namespace: default
+---
+##rolebinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sidecar-rolebinding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: sidecar-service-account
+    namespace: default
