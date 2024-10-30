@@ -35,6 +35,14 @@ rules:
   - patch
   - update
 - apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - serverless.vke.volcengine.com
   resources:
   - sidecarconfigs

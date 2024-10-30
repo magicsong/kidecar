@@ -74,7 +74,7 @@ func (s *sidecar) AddPlugin(plugin api.Plugin) error {
 		return fmt.Errorf("plugin name is empty")
 	}
 	pluginConfig := plugin.GetConfigType()
-	pluginOption, ok := s.SidecarConfig.Plugins[plugin.Name()]
+	pluginOption, ok := s.getPluginFromConfig(plugin.Name())
 	if !ok {
 		s.log.Info("plugin not found in config, skip", "plugin", plugin.Name())
 		return nil
@@ -88,6 +88,19 @@ func (s *sidecar) AddPlugin(plugin api.Plugin) error {
 	}
 	s.plugins[plugin.Name()] = plugin
 	return nil
+}
+
+func (s *sidecar) getPluginFromConfig(name string) (api.PluginConfig, bool) {
+	var pluginOption api.PluginConfig
+	var ok bool
+	for _, option := range s.SidecarConfig.Plugins {
+		if option.Name == name {
+			pluginOption = option
+			ok = true
+			break
+		}
+	}
+	return pluginOption, ok
 }
 
 // GetVersion implements api.Sidecar.
@@ -180,7 +193,7 @@ func (s *sidecar) pollPluginStatus(pluginName string, interval time.Duration) {
 }
 
 func (s *sidecar) isPluginEnabled(pluginName string) bool {
-	pluginOption, ok := s.SidecarConfig.Plugins[pluginName]
+	pluginOption, ok := s.getPluginFromConfig(pluginName)
 	if !ok {
 		return true
 	}

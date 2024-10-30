@@ -2,23 +2,60 @@ package injector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/magicsong/kidecar/api"
 	"github.com/magicsong/kidecar/api/v1alpha1"
 	"github.com/magicsong/kidecar/pkg/utils"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+func convertKubeConfigToSidecarConfig(config *v1alpha1.KidecarConfig) (*api.SidecarConfig, error) {
+	result := &api.SidecarConfig{
+		Plugins:           []api.PluginConfig{},
+		RestartPolicy:     config.RestartPolicy,
+		Resources:         config.Resources,
+		SidecarStartOrder: config.SidecarStartOrder,
+	}
+	for _, plugin := range config.Plugins {
+		convertMap, err := convertRawToMap(&plugin.Config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert raw extension to map: %v", err)
+		}
+		result.Plugins = append(result.Plugins, api.PluginConfig{
+			Name:      plugin.Name,
+			Config:    convertMap,
+			BootOrder: plugin.BootOrder,
+		})
+	}
+	return result, nil
+}
+
+// convertRawToMap 将 runtime.RawExtension 转换为 map[string]interface{}
+func convertRawToMap(raw *runtime.RawExtension) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	if err := json.Unmarshal(raw.Raw, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal raw extension: %v", err)
+	}
+	return result, nil
+}
+
 func buildConfigYaml(kidecarConfig *v1alpha1.KidecarConfig) (string, error) {
+	apiConfig, err := convertKubeConfigToSidecarConfig(kidecarConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert kube config to sidecar config: %v", err)
+	}
 	// 将结构体转换为 YAML
-	yamlData, err := yaml.Marshal(kidecarConfig)
+	yamlData, err := yaml.Marshal(apiConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal kidecarConfig to YAML: %v", err)
 	}

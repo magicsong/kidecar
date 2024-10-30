@@ -28,10 +28,10 @@ type PluginConfig struct {
 
 // SidecarConfig 表示 Sidecar 的配置
 type SidecarConfig struct {
-	Plugins           map[string]PluginConfig `json:"plugins"`           // 启动的插件及其配置
-	RestartPolicy     string                  `json:"restartPolicy"`     // 重启策略
-	Resources         map[string]string       `json:"resources"`         // Sidecar 所需的资源
-	SidecarStartOrder string                  `json:"sidecarStartOrder"` // Sidecar 的启动顺序，是在主容器之后还是之前
+	Plugins           []PluginConfig    `json:"plugins"`           // 启动的插件及其配置
+	RestartPolicy     string            `json:"restartPolicy"`     // 重启策略
+	Resources         map[string]string `json:"resources"`         // Sidecar 所需的资源
+	SidecarStartOrder string            `json:"sidecarStartOrder"` // Sidecar 的启动顺序，是在主容器之后还是之前
 }
 
 // PluginStatus 表示插件的状态
