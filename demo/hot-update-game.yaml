@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hot-update-demo
+  namespace: default
+spec:
+  serviceName: "hot-update-demo"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hot-update-demo
+  template:
+    metadata:
+      annotations:
+        vci.volcengine.com/tls-enable: "false"
+        vke.volcengine.com/burst-to-vci: enforce #该方案可以在 VCI 中使用
+      labels:
+        app: hot-update-demo
+    spec:
+      containers:
+        - image: cr-demo-cn-beijing.cr.volces.com/guox/2048
+          imagePullPolicy: Always
+          name: game-room-r9001
+          ports:
+            - containerPort: 80
+              name: game
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/www/html
+              name: share-data # 持久化存储共享目录
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - emptyDir: {}
+          name: share-data
+
+---
+apiVersion: serverless.vke.volcengine.com/v1alpha1
+kind: SidecarConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: kidecar
+  name: sidecarconfig-sample
+spec:
+  injection:
+    selector:
+      matchLabels:
+        app: hot-update-demo
+    injectKidecar: true
+    namespace: default
+    serviceAccountName: kidecar-sa
+    shareProcessNamespace: true
+  kidecar:
+    plugins:
+    - name: hot_update
+      config:
+        loadPatchType: "signal"
+        fileDir: "/app/downloads"
+        signal:
+          signalName: "SIGHUP"
+          processName: "nginx: master process nginx"
+        storageConfig: # 存储配置
+          type: InKube
+          inKube:
+            annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
+        bootOrder: 1
+    restartPolicy: Always
+    resources:
+      CPU: 100m
+      Memory: 128Mi
+    sidecarStartOrder: Before
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sidecar-result
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kidecar-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kidecar-sa       # 为你的pod设置serviceAccount名字
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sidecar-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kidecar-role
+subjects:
+  - kind: ServiceAccount
+    name: kidecar-sa
+    namespace: default
