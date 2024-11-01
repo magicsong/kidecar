@@ -43,6 +43,9 @@ func (h *httpProber) Init(config interface{}, mgr api.SidecarManager) error {
 	if h.config.ProbeIntervalSeconds <= 0 {
 		h.config.ProbeIntervalSeconds = 5
 	}
+	if h.config.StartDelaySeconds <= 0 {
+		h.config.StartDelaySeconds = 30
+	}
 	return nil
 }
 
@@ -53,6 +56,18 @@ func (h *httpProber) Name() string {
 
 // Start implements api.Plugin.
 func (h *httpProber) Start(ctx context.Context, errorCh chan<- error) {
+	// 延迟启动
+	if h.config.StartDelaySeconds > 0 {
+		h.log.Info("Delaying start", "seconds", h.config.StartDelaySeconds)
+		select {
+		case <-time.After(time.Duration(h.config.StartDelaySeconds) * time.Second):
+			// 延迟时间结束，继续启动
+		case <-ctx.Done():
+			// 上下文被取消，退出
+			h.status.setStatus("Stopped")
+			return
+		}
+	}
 	h.log.Info("Starting http probe plugin")
 	reloadConfig := make(chan struct{})
 	if len(h.config.Endpoints) == 0 {

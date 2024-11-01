@@ -5,7 +5,7 @@ kind: Kustomization
 images:
 - name: controller
   newName: 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar-manager
-  newTag: v5.2
+  newTag: v5.3
 patches:
 - path: env_path.yaml
   target:

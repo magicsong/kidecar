@@ -6,6 +6,7 @@ WORKDIR /app
 
 # 复制Go模块文件
 COPY go.mod go.sum ./
+RUN go mod download
 
 # 复制源代码
 #COPY vendor vendor
