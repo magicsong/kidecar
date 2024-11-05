@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: hot-update-demo
+  name: hot-update-demo1
   namespace: default
 spec:
   serviceName: "hot-update-demo"
@@ -42,42 +42,6 @@ spec:
       volumes:
         - emptyDir: {}
           name: share-data
-
----
-apiVersion: serverless.vke.volcengine.com/v1alpha1
-kind: SidecarConfig
-metadata:
-  labels:
-    app.kubernetes.io/name: kidecar
-  name: sidecarconfig-sample
-spec:
-  injection:
-    selector:
-      matchLabels:
-        app: hot-update-demo
-    injectKidecar: true
-    namespace: default
-    serviceAccountName: kidecar-sa
-    shareProcessNamespace: true
-  kidecar:
-    plugins:
-    - name: hot_update
-      config:
-        loadPatchType: "signal"
-        fileDir: "/app/downloads"
-        signal:
-          signalName: "SIGHUP"
-          processName: "nginx: master process nginx"
-        storageConfig: # 存储配置
-          type: InKube
-          inKube:
-            annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
-        bootOrder: 1
-    restartPolicy: Always
-    resources:
-      CPU: 100m
-      Memory: 128Mi
-    sidecarStartOrder: Before
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -85,39 +49,45 @@ metadata:
   name: sidecar-result
   namespace: kube-system
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: kidecar-role
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - configmaps
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
----
 apiVersion: v1
-kind: ServiceAccount
+kind: Service
 metadata:
-  name: kidecar-sa       # 为你的pod设置serviceAccount名字
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: sidecar-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: kidecar-role
-subjects:
-  - kind: ServiceAccount
-    name: kidecar-sa
-    namespace: default
+  annotations:
+    service.beta.kubernetes.io/volcengine-loadbalancer-address-type: PUBLIC
+    service.beta.kubernetes.io/volcengine-loadbalancer-bandwidth: "10"
+    service.beta.kubernetes.io/volcengine-loadbalancer-billing-type: "2"
+    service.beta.kubernetes.io/volcengine-loadbalancer-eip-billing-type: "3"
+    service.beta.kubernetes.io/volcengine-loadbalancer-health-check-flag: "off"
+    service.beta.kubernetes.io/volcengine-loadbalancer-ip-version: ipv4
+    service.beta.kubernetes.io/volcengine-loadbalancer-isp-type: BGP
+    service.beta.kubernetes.io/volcengine-loadbalancer-master-zone-id: cn-beijing-a
+    service.beta.kubernetes.io/volcengine-loadbalancer-modification-protection-status: ConsoleProtection
+    service.beta.kubernetes.io/volcengine-loadbalancer-name: lzp-game
+    service.beta.kubernetes.io/volcengine-loadbalancer-pass-through: "true"
+    service.beta.kubernetes.io/volcengine-loadbalancer-project-name: default
+    service.beta.kubernetes.io/volcengine-loadbalancer-scheduler: wrr
+    service.beta.kubernetes.io/volcengine-loadbalancer-slave-zone-id: cn-beijing-b
+    service.beta.kubernetes.io/volcengine-loadbalancer-spec: small_1
+  name: lzp-game-service
+  namespace: default
+spec:
+  allocateLoadBalancerNodePorts: true
+  externalTrafficPolicy: Local
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    - name: hot
+      port: 5000
+      protocol: TCP
+      targetPort: 5000
+  selector:
+    app: hot-update-demo
+  sessionAffinity: None
+  type: LoadBalancer
+
