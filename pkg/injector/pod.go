@@ -20,6 +20,7 @@ const (
 	InjectAnnotationKey  = "sidecarconfig.kidecar.io/inject"
 	ConfigmapHashKey     = "sidecarconfig.kidecar.io/hash"
 	KidecarConfigmapName = "kidecar-config"
+	HotUpdateVolume      = "share-data"
 )
 
 const (
@@ -262,10 +263,20 @@ func addKidecarContainer(pod *corev1.Pod, SidecarConfig *v1alpha1.SidecarConfig)
 				Value: "nginx: master process nginx",
 			},
 		},
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "hot-update-port",
+				ContainerPort: 5000,
+			},
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      KidecarConfigmapName,
 				MountPath: "/opt/kidecar",
+			},
+			{
+				Name:      HotUpdateVolume,
+				MountPath: "/app/downloads",
 			},
 		},
 	}
