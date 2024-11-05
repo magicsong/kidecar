@@ -136,7 +136,7 @@ func InjectPod(ctx context.Context, pod *corev1.Pod, ctrlclient client.Client) e
 		if err := ctrlclient.Get(ctx, client.ObjectKey{Name: config.Name, Namespace: config.Namespace}, originConfig); err != nil {
 			return err
 		}
-		originConfig.Status.MatchedPods++
+		originConfig.Status.MatchedPods = config.Status.MatchedPods + 1
 		return ctrlclient.Status().Update(ctx, originConfig)
 	})
 	if err != nil {

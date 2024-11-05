@@ -37,6 +37,7 @@ import (
 
 	serverlessv1alpha1 "github.com/magicsong/kidecar/api/v1alpha1"
 	"github.com/magicsong/kidecar/internal/controller"
+	"github.com/magicsong/kidecar/pkg/collector"
 	mywebhook "github.com/magicsong/kidecar/pkg/webhook"
 	// +kubebuilder:scaffold:imports
 )
@@ -172,7 +173,10 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-
+	if err := collector.StartPodInfoCollector(mgr); err != nil {
+		setupLog.Error(err, "unable to start pod info collector")
+		os.Exit(1)
+	}
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")

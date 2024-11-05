@@ -16,6 +16,7 @@ spec:
     plugins:
     - name: http_probe
       config:
+        startDelaySeconds: 60
         endpoints:
           - url: "http://localhost:8080"               # 目标 URL
             method: "GET"                           # HTTP 方法
