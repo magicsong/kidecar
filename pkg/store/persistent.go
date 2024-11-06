@@ -32,6 +32,8 @@ func (p *PersistentConfig) GetPersistenceInfo() error {
 		return fmt.Errorf("failed to get current pod namespace and name: %w", err)
 	}
 
+	p.Result = map[string]string{}
+
 	persistentInfo := map[string]map[string]string{}
 	if info, ok := cm.Data[nameAndNamespace]; ok {
 		err := yaml.Unmarshal([]byte(info), &persistentInfo)
@@ -42,7 +44,20 @@ func (p *PersistentConfig) GetPersistenceInfo() error {
 		if res, ok := persistentInfo[p.Type]; ok {
 			p.Result = res
 		}
+	} else {
+		for _, v := range cm.Data {
+			err := yaml.Unmarshal([]byte(v), &persistentInfo)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal hotUpdateInfo: %v", err)
+			}
+			if res, ok := persistentInfo[p.Type]; ok {
+				for version, url := range res {
+					p.Result[version] = url
+				}
+			}
+		}
 	}
+
 	return nil
 }
 

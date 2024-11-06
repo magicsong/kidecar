@@ -16,6 +16,11 @@ const (
 	LoadPatchTypeSignal = "signal"
 	// LoadPatchTypeRequest is the type of load patch that sends a request to the main container.
 	LoadPatchTypeRequest = "request"
+
+	// OriginVersion is the version of the original file.
+	OriginVersion = "OriginVersion"
+	// OriginUrl is the url of the original file.
+	OriginUrl = "OriginUrl"
 )
 
 func validateConfig(hotUpdateConfig *HotUpdateConfig) error {
