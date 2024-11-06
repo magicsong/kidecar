@@ -29,13 +29,13 @@ spec:
               type: InKube
               inKube:
               #annotationKey: http_probe
-                target:
-                    group:  game.kruise.io
-                    version: v1alpha1
-                    resource: gameservers
-                    name: ${SELF:POD_NAME}
-                    namespace: ${SELF:POD_NAMESPACE}
-                jsonPath: /spec/opsState
+              # target:
+              #     group:  game.kruise.io
+              #     version: v1alpha1
+              #     resource: gameservers
+              #     name: ${SELF:POD_NAME}
+              #     namespace: ${SELF:POD_NAMESPACE}
+              # jsonPath: /spec/opsState
                 markerPolices:
                   - state: idle
                     labels:
@@ -47,6 +47,11 @@ spec:
                       gameserver-idle: 'false'
                     annotations:
                       controller.kubernetes.io/pod-deletion-cost: '10'
+                  - state: unknown
+                    labels:
+                      gameserver-idle: 'true'
+                    annotations:
+                      controller.kubernetes.io/pod-deletion-cost: '-10'
 
             # jsonPathConfig:                         # JSONPath 配置
             #   path: "$.store.book[*].author"
@@ -80,3 +85,19 @@ subjects:
 - kind: ServiceAccount
   name: sidecar-service-account
   namespace: default
+
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: workload-scaledobject
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: kidecar-game-deployment
+  triggers:
+  - type: kubernetes-workload
+    metadata:
+      podSelector: 'app=kidecar-game, gameserver-idle=false'
+      value: '3'

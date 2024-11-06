@@ -15,6 +15,6 @@ spec:
     spec:
       containers:
       - name: kidecar-game
-        image: 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar-game:v1
+        image: 113745426946.dkr.ecr.us-east-1.amazonaws.com/xuetaotest/kidecar-game:v2
         ports:
         - containerPort: 14005
