@@ -115,7 +115,7 @@ func (c *inKube) Store(data string, config interface{}) error {
 }
 
 func (c *inKube) storeInOtherObject(data string, myconfig *InKubeConfig) error {
-	if myconfig.Target == nil && len(myconfig.MarkerPolices) < 1 {
+	if myconfig.Target == nil || len(myconfig.MarkerPolices) < 1 {
 		return nil
 	}
 	gvr := myconfig.Target.ToGvr()

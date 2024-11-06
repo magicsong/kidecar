@@ -49,9 +49,9 @@ spec:
                       controller.kubernetes.io/pod-deletion-cost: '10'
                   - state: unknown
                     labels:
-                      gameserver-idle: 'true'
+                      gameserver-idle: 'false'
                     annotations:
-                      controller.kubernetes.io/pod-deletion-cost: '-10'
+                      controller.kubernetes.io/pod-deletion-cost: '5'
 
             # jsonPathConfig:                         # JSONPath 配置
             #   path: "$.store.book[*].author"
@@ -96,8 +96,13 @@ metadata:
 spec:
   scaleTargetRef:
     name: kidecar-game-deployment
+  minReplicaCount: 1  # 设置最小副本数为1
+  maxReplicaCount: 10 # 你可以根据需求调整最大副本数
+  pollingInterval: 30 # 每30秒检查一次负载
+  cooldownPeriod:  300 # 缩容操作后的冷却时间，以秒为单位
   triggers:
   - type: kubernetes-workload
     metadata:
       podSelector: 'app=kidecar-game, gameserver-idle=false'
-      value: '3'
+      value: '0.9'  # 房间占比率大于90%时，触发扩容
+      activationValue: '0.5' # 激活阈值，也即缩容的触发条件
