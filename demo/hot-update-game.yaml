@@ -14,6 +14,10 @@ spec:
       annotations:
         vci.volcengine.com/tls-enable: "false"
         vke.volcengine.com/burst-to-vci: enforce #该方案可以在 VCI 中使用
+        vke.volcengine.com/primary-eip-allocate: '{"type": "Elastic"}'
+        vke.volcengine.com/primary-eip-attributes: '{ "name": "eip-demo", "description":
+                  "demo for pods eip", "isp": "BGP", "billingType": 3, "projectName": "default",
+                  "bandwidth": 200 }'
       labels:
         app: hot-update-demo
     spec:
@@ -49,45 +53,45 @@ metadata:
   name: sidecar-result
   namespace: kube-system
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    service.beta.kubernetes.io/volcengine-loadbalancer-address-type: PUBLIC
-    service.beta.kubernetes.io/volcengine-loadbalancer-bandwidth: "10"
-    service.beta.kubernetes.io/volcengine-loadbalancer-billing-type: "2"
-    service.beta.kubernetes.io/volcengine-loadbalancer-eip-billing-type: "3"
-    service.beta.kubernetes.io/volcengine-loadbalancer-health-check-flag: "off"
-    service.beta.kubernetes.io/volcengine-loadbalancer-ip-version: ipv4
-    service.beta.kubernetes.io/volcengine-loadbalancer-isp-type: BGP
-    service.beta.kubernetes.io/volcengine-loadbalancer-master-zone-id: cn-beijing-a
-    service.beta.kubernetes.io/volcengine-loadbalancer-modification-protection-status: ConsoleProtection
-    service.beta.kubernetes.io/volcengine-loadbalancer-name: lzp-game
-    service.beta.kubernetes.io/volcengine-loadbalancer-pass-through: "true"
-    service.beta.kubernetes.io/volcengine-loadbalancer-project-name: default
-    service.beta.kubernetes.io/volcengine-loadbalancer-scheduler: wrr
-    service.beta.kubernetes.io/volcengine-loadbalancer-slave-zone-id: cn-beijing-b
-    service.beta.kubernetes.io/volcengine-loadbalancer-spec: small_1
-  name: lzp-game-service
-  namespace: default
-spec:
-  allocateLoadBalancerNodePorts: true
-  externalTrafficPolicy: Local
-  internalTrafficPolicy: Cluster
-  ipFamilies:
-    - IPv4
-  ipFamilyPolicy: SingleStack
-  ports:
-    - name: http
-      port: 80
-      protocol: TCP
-      targetPort: 80
-    - name: hot
-      port: 5000
-      protocol: TCP
-      targetPort: 5000
-  selector:
-    app: hot-update-demo
-  sessionAffinity: None
-  type: LoadBalancer
-
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  annotations:
+#    service.beta.kubernetes.io/volcengine-loadbalancer-address-type: PUBLIC
+#    service.beta.kubernetes.io/volcengine-loadbalancer-bandwidth: "10"
+#    service.beta.kubernetes.io/volcengine-loadbalancer-billing-type: "2"
+#    service.beta.kubernetes.io/volcengine-loadbalancer-eip-billing-type: "3"
+#    service.beta.kubernetes.io/volcengine-loadbalancer-health-check-flag: "off"
+#    service.beta.kubernetes.io/volcengine-loadbalancer-ip-version: ipv4
+#    service.beta.kubernetes.io/volcengine-loadbalancer-isp-type: BGP
+#    service.beta.kubernetes.io/volcengine-loadbalancer-master-zone-id: cn-beijing-a
+#    service.beta.kubernetes.io/volcengine-loadbalancer-modification-protection-status: ConsoleProtection
+#    service.beta.kubernetes.io/volcengine-loadbalancer-name: lzp-game
+#    service.beta.kubernetes.io/volcengine-loadbalancer-pass-through: "true"
+#    service.beta.kubernetes.io/volcengine-loadbalancer-project-name: default
+#    service.beta.kubernetes.io/volcengine-loadbalancer-scheduler: wrr
+#    service.beta.kubernetes.io/volcengine-loadbalancer-slave-zone-id: cn-beijing-b
+#    service.beta.kubernetes.io/volcengine-loadbalancer-spec: small_1
+#  name: lzp-game-service
+#  namespace: default
+#spec:
+#  allocateLoadBalancerNodePorts: true
+#  externalTrafficPolicy: Local
+#  internalTrafficPolicy: Cluster
+#  ipFamilies:
+#    - IPv4
+#  ipFamilyPolicy: SingleStack
+#  ports:
+#    - name: http
+#      port: 80
+#      protocol: TCP
+#      targetPort: 80
+#    - name: hot
+#      port: 5000
+#      protocol: TCP
+#      targetPort: 5000
+#  selector:
+#    app: hot-update-demo
+#  sessionAffinity: None
+#  type: LoadBalancer
+#

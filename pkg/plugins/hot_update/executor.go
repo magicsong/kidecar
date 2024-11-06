@@ -217,9 +217,26 @@ func (h *hotUpdate) setHotUpdateConfigWhenStart() error {
 		return fmt.Errorf("failed to GetPersistenceInfo of %v ", pluginName)
 	}
 
-	// 未重启
 	if len(persistentResult.Result) == 0 {
+		h.result.Version = OriginVersion
+		h.result.Url = OriginUrl
+		err = h.storeDataToConfigmap()
+		if err != nil {
+			return fmt.Errorf("failed to store data to configmap: %v", err)
+		}
+
 		h.log.Info("sidecar result has not the pod info")
+		return nil
+	}
+	if len(persistentResult.Result) == 1 && persistentResult.Result[OriginVersion] == OriginUrl {
+		h.result.Version = OriginVersion
+		h.result.Url = OriginUrl
+		err = h.storeDataToConfigmap()
+		if err != nil {
+			return fmt.Errorf("failed to store data to configmap: %v", err)
+		}
+
+		h.log.Info("origin pod restart")
 		return nil
 	}
 
@@ -261,6 +278,11 @@ func (h *hotUpdate) setHotUpdateConfigWhenStart() error {
 	err = h.storeData()
 	if err != nil {
 		return fmt.Errorf("failed to store data: %v", err)
+	}
+
+	err = h.storeDataToConfigmap()
+	if err != nil {
+		return fmt.Errorf("failed to store data to configmap: %v", err)
 	}
 	return nil
 }
