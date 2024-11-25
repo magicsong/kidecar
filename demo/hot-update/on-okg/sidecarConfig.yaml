@@ -1,0 +1,71 @@
+apiVersion: serverless.vke.volcengine.com/v1alpha1
+kind: SidecarConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: kidecar
+  name: sidecarconfig-sample
+spec:
+  injection:
+    selector:
+      matchLabels:
+        app: hot-update-gs
+    injectKidecar: true
+    namespace: default
+    serviceAccountName: kidecar-sa
+    shareProcessNamespace: true
+  kidecar:
+    plugins:
+      - name: hot_update
+        config:
+          loadPatchType: "signal"
+          fileDir: "/app/downloads"
+          signal:
+            signalName: "SIGHUP"
+            processName: "nginx: master process nginx"
+          storageConfig: # 存储配置
+            type: InKube
+            inKube:
+              annotationKey: "sidecar.vke.volcengine.com/hot-update-result"
+          bootOrder: 1
+    restartPolicy: Always
+    resources:
+      CPU: 100m
+      Memory: 128Mi
+    sidecarStartOrder: Before
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kidecar-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kidecar-sa       # 为你的pod设置serviceAccount名字
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sidecar-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kidecar-role
+subjects:
+  - kind: ServiceAccount
+    name: kidecar-sa
+    namespace: default

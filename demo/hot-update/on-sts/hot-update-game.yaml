@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hot-update-demo1
+  namespace: default
+spec:
+  serviceName: "hot-update-demo"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hot-update-demo
+  template:
+    metadata:
+      annotations:
+        vci.volcengine.com/tls-enable: "false"
+        vke.volcengine.com/burst-to-vci: enforce #该方案可以在 VCI 中使用
+        vke.volcengine.com/primary-eip-allocate: '{"type": "Elastic"}'
+        vke.volcengine.com/primary-eip-attributes: '{ "name": "eip-demo", "description":
+                  "demo for pods eip", "isp": "BGP", "billingType": 3, "projectName": "default",
+                  "bandwidth": 200 }'
+      labels:
+        app: hot-update-demo
+    spec:
+      containers:
+        - image: cr-demo-cn-beijing.cr.volces.com/guox/2048
+          imagePullPolicy: Always
+          name: game-room-r9001
+          ports:
+            - containerPort: 80
+              name: game
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/www/html
+              name: share-data # 持久化存储共享目录
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - emptyDir: {}
+          name: share-data
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sidecar-result
+  namespace: kube-system
+

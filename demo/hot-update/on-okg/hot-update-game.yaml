@@ -1,0 +1,97 @@
+apiVersion: game.kruise.io/v1alpha1
+kind: GameServerSet
+metadata:
+  name: hot-update-gs
+  namespace: default
+spec:
+  replicas: 2
+  updateStrategy:
+    rollingUpdate:
+      podUpdatePolicy: InPlaceIfPossible
+  network:
+    networkType: Volcengine-CLB
+    networkConf:
+      - name: ClbIds
+        #填写已经创建好的clb ID
+        value: clb-rs42gltrsf0gv0x58h0zbjm
+      - name: PortProtocols
+        # 填写pod暴露的端口及协议，支持填写多个端口/协议
+        # 填写格式：port1/protocol1,port2/protocol2,...（协议需大写）
+        value: 5000/TCP,80/TCP
+      - name: Fixed
+        #是否固定访问IP/端口。若是，即使pod删除重建，网络内外映射关系不会改变
+        value: "false"
+        #自定义的anno
+      - name: Annotations
+        value: "service.beta.kubernetes.io/volcengine-loadbalancer-pass-through:true,service.beta.kubernetes.io/volcengine-loadbalancer-scheduler:wrr,service.beta.kubernetes.io/volcengine-loadbalancer-healthy-threshold:3"
+  gameServerTemplate:
+    metadata:
+      annotations:
+        vke.volcengine.com/burst-to-vci: enforce
+      labels:
+        app: hot-update-gs
+    spec:
+      # 添加一个InitContainers检测clb是否分配成功，绑定成功后才启动主容器，
+      # 保证主容器启动时pod的clb和端口已经分配成功
+      initContainers:
+        - command:
+            - timeout
+            - "60"
+            - sh
+            - -c
+            - until grep -i 'externalAddress' /etc/ipinfo/allocated-ip; do echo waiting
+              for allocated-ip; sleep 1; done
+          image: cr-helm2-cn-beijing.cr.volces.com/perf/busybox:latest
+          imagePullPolicy: Always
+          name: init
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          # 将外部访问地址和端口挂载到容器内的/etc/ipinfo中
+          volumeMounts:
+            - mountPath: /etc/ipinfo
+              name: ipinfo
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+#      serviceAccountName: okg-sa
+      terminationGracePeriodSeconds: 30
+      containers:
+        - image: cr-demo-cn-beijing.cr.volces.com/guox/2048
+          name: game-2048
+          ports:
+            - containerPort: 5000
+              name: hot-update
+              protocol: TCP
+            - containerPort: 80
+              name: game
+              protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          # 将外部访问地址和端口挂载到容器内的/etc/ipinfo中
+          volumeMounts:
+            - mountPath: /etc/ipinfo
+              name: ipinfo
+            - mountPath: /var/www/html
+              name: share-data # 持久化存储共享目录
+      dnsPolicy: ClusterFirst
+      volumes:
+        # 游戏服创建好后，游戏服pod的anno中game.kruise.io/network-status中记录了pod的访问地址和端口，
+        # 其中externalAddresses为外部访问地址和端口。
+        - downwardAPI:
+            defaultMode: 420
+            items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.annotations['game.kruise.io/network-status']
+                path: allocated-ip
+          name: ipinfo
+        - emptyDir: {}
+          name: share-data
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sidecar-result
+  namespace: kube-system
+
