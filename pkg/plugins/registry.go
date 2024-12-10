@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"encoding/binary"
+
 	"github.com/magicsong/kidecar/api"
 	"github.com/magicsong/kidecar/pkg/plugins/hot_update"
 	httpprobe "github.com/magicsong/kidecar/pkg/plugins/http_probe"
@@ -19,4 +21,5 @@ func init() {
 	// 注册plugin
 	RegisterPlugin(httpprobe.NewPlugin())
 	RegisterPlugin(hot_update.NewPlugin())
+	RegisterPlugin(binary.NewPlugin())
 }

@@ -99,7 +99,38 @@ type PluginConfig struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Config    runtime.RawExtension `json:"config"`
+	Binary    *Binary               `json:"binary"`
 	BootOrder int                  `json:"bootOrder"`
+}
+
+type Binary struct {
+
+	// 二进制文件的路径
+	Path string `json:"path"`
+
+	// 二进制文件的版本
+	Version string `json:"version"`
+
+	// 二进制文件的校验和（例如 SHA256），用于验证文件完整性
+	Checksum string `json:"checksum"`
+
+	// 二进制文件的启动参数
+	Args []string `json:"args,omitempty"`
+
+	// 二进制文件的环境变量
+	Env []string `json:"env,omitempty"`
+
+	// 二进制文件的依赖项（如果有）
+	Dependencies []string `json:"dependencies,omitempty"`
+
+	// 二进制文件的执行权限（例如 "755"）
+	Permissions string `json:"permissions,omitempty"`
+
+	// 二进制文件的描述信息
+	Description string `json:"description,omitempty"`
+
+	// 下载二进制文件的URL
+    DownloadURL string `json:"downloadURL,omitempty"`
 }
 
 // SidecarConfigStatus defines the observed state of SidecarConfig
