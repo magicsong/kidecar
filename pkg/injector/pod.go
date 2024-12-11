@@ -274,10 +274,6 @@ func addKidecarContainer(pod *corev1.Pod, SidecarConfig *v1alpha1.SidecarConfig)
 				Name:      KidecarConfigmapName,
 				MountPath: "/opt/kidecar",
 			},
-			{
-				Name:      HotUpdateVolume,
-				MountPath: "/app/downloads",
-			},
 		},
 	}
 	if SidecarConfig.Spec.Injection.UseKubeNativeSidecar {

@@ -27,7 +27,7 @@ func convertKubeConfigToSidecarConfig(config *v1alpha1.KidecarConfig) (*api.Side
 		SidecarStartOrder: config.SidecarStartOrder,
 	}
 	for _, plugin := range config.Plugins {
-		convertMap, err := convertRawToMap(&plugin.Config)
+		convertMap, err := convertRawToMap(plugin.Config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert raw extension to map: %v", err)
 		}
@@ -35,6 +35,7 @@ func convertKubeConfigToSidecarConfig(config *v1alpha1.KidecarConfig) (*api.Side
 			Name:      plugin.Name,
 			Config:    convertMap,
 			BootOrder: plugin.BootOrder,
+			Binary:    plugin.Binary,
 		})
 	}
 	return result, nil
@@ -42,6 +43,9 @@ func convertKubeConfigToSidecarConfig(config *v1alpha1.KidecarConfig) (*api.Side
 
 // convertRawToMap 将 runtime.RawExtension 转换为 map[string]interface{}
 func convertRawToMap(raw *runtime.RawExtension) (map[string]interface{}, error) {
+	if raw == nil || len(raw.Raw) < 1 {
+		return nil, nil
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(raw.Raw, &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal raw extension: %v", err)

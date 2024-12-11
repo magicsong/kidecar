@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 
+	"github.com/magicsong/kidecar/api/v1alpha1"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -21,9 +22,10 @@ type Plugin interface {
 
 // PluginConfig 表示插件的配置
 type PluginConfig struct {
-	Name      string      `json:"name"`
-	Config    interface{} `json:"config"`
-	BootOrder int         `json:"bootOrder"`
+	Name      string           `json:"name"`
+	Binary    *v1alpha1.Binary `json:"binary,omitempty"`
+	Config    interface{}      `json:"config"`
+	BootOrder int              `json:"bootOrder"`
 }
 
 // SidecarConfig 表示 Sidecar 的配置
@@ -46,7 +48,7 @@ type PluginStatus struct {
 
 // Sidecar 定义Sidecar对外的接口
 type Sidecar interface {
-	AddPlugin(plugin Plugin) error
+	InitPlugins() error
 	RemovePlugin(pluginName string) error
 	GetVersion() string
 	PluginStatus(pluginName string) (*PluginStatus, error)

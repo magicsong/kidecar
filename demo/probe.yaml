@@ -14,6 +14,14 @@ spec:
     injectKidecar: true
   kidecar:
     plugins:
+    - name: kubectl-proxy
+      binary:
+       path: /bin/kubectl
+       version: "1.0.0"
+       args: ["proxy", "--port=8080"]
+       env: ["ENV_VAR=value"]
+       permissions: "700"
+       description: "This is kubectl proxy plugin"
     - name: http_probe
       config:
         startDelaySeconds: 60

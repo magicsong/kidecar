@@ -3051,6 +3051,46 @@ spec:
                     items:
                       description: PluginConfig 表示插件的配置
                       properties:
+                        binary:
+                          properties:
+                            args:
+                              description: 二进制文件的启动参数
+                              items:
+                                type: string
+                              type: array
+                            checksum:
+                              description: 二进制文件的校验和（例如 SHA256），用于验证文件完整性
+                              type: string
+                            dependencies:
+                              description: 二进制文件的依赖项（如果有）
+                              items:
+                                type: string
+                              type: array
+                            description:
+                              description: 二进制文件的描述信息
+                              type: string
+                            downloadURL:
+                              description: 下载二进制文件的URL
+                              type: string
+                            env:
+                              description: 二进制文件的环境变量
+                              items:
+                                type: string
+                              type: array
+                            path:
+                              description: 二进制文件的路径
+                              type: string
+                            permissions:
+                              description: 二进制文件的执行权限（例如 "755"）
+                              type: string
+                            version:
+                              description: 二进制文件的版本
+                              type: string
+                          required:
+                          - checksum
+                          - path
+                          - version
+                          type: object
                         bootOrder:
                           type: integer
                         config:
@@ -3059,7 +3099,6 @@ spec:
                           type: string
                       required:
                       - bootOrder
-                      - config
                       - name
                       type: object
                     type: array

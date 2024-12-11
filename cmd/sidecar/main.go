@@ -7,7 +7,6 @@ import (
 	"github.com/magicsong/kidecar/pkg/assembler"
 	"github.com/magicsong/kidecar/pkg/info"
 	"github.com/magicsong/kidecar/pkg/manager"
-	"github.com/magicsong/kidecar/pkg/plugins"
 	flag "github.com/spf13/pflag"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -36,11 +35,8 @@ func main() {
 	info.SetGlobalKubeInterface(mgr)
 	sidecar.SetupWithManager(mgr)
 	// add plugins
-	for _, v := range plugins.PluginRegistry {
-		if err := sidecar.AddPlugin(v); err != nil {
-			log.Error(err, "failed to add plugin", "pluginName", v.Name())
-			panic(err)
-		}
+	if err := sidecar.InitPlugins(); err != nil {
+		panic(err)
 	}
 	ctx := context.TODO()
 	if err := sidecar.Start(ctx); err != nil {

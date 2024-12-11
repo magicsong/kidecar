@@ -98,9 +98,9 @@ type PluginConfig struct {
 	Name string `json:"name"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	Config    runtime.RawExtension `json:"config"`
-	Binary    *Binary               `json:"binary"`
-	BootOrder int                  `json:"bootOrder"`
+	Config    *runtime.RawExtension `json:"config,omitempty"`
+	Binary    *Binary               `json:"binary,omitempty"`
+	BootOrder int                   `json:"bootOrder"`
 }
 
 type Binary struct {
@@ -130,7 +130,7 @@ type Binary struct {
 	Description string `json:"description,omitempty"`
 
 	// 下载二进制文件的URL
-    DownloadURL string `json:"downloadURL,omitempty"`
+	DownloadURL string `json:"downloadURL,omitempty"`
 }
 
 // SidecarConfigStatus defines the observed state of SidecarConfig

@@ -13,9 +13,10 @@ import (
 	"github.com/magicsong/kidecar/api/v1alpha1"
 )
 
-func NewPlugin() api.Plugin {
+func NewPlugin(config v1alpha1.Binary) api.Plugin {
 	return &binary{
-		name: "binary",
+		name:   "binary",
+		config: config,
 	}
 }
 

@@ -11,6 +11,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/magicsong/kidecar/api"
+	"github.com/magicsong/kidecar/pkg/plugins"
+	"github.com/magicsong/kidecar/pkg/plugins/binary"
 	"github.com/magicsong/kidecar/pkg/utils"
 	"gopkg.in/yaml.v3"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -65,21 +67,31 @@ func NewSidecar() api.Sidecar {
 	}
 }
 
+func (s *sidecar) InitPlugins() error {
+	for _, p := range s.SidecarConfig.Plugins {
+		if p.Binary != nil {
+			s.log.Info("binary plugin found", "plugin", p.Name)
+			s.plugins[p.Name] = binary.NewPlugin(*p.Binary)
+		} else {
+			if err := s.AddPlugin(p.Name, p.Config); err != nil {
+				return fmt.Errorf("failed to add built in plugin %s,err:%w", p.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
 // AddPlugin implements api.Sidecar.
-func (s *sidecar) AddPlugin(plugin api.Plugin) error {
+func (s *sidecar) AddPlugin(name string, config interface{}) error {
 	//lock and add
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if plugin.Name() == "" {
-		return fmt.Errorf("plugin name is empty")
+	plugin, ok := plugins.PluginRegistry[name]
+	if !ok {
+		return fmt.Errorf("failed to find plugin %s", name)
 	}
 	pluginConfig := plugin.GetConfigType()
-	pluginOption, ok := s.getPluginFromConfig(plugin.Name())
-	if !ok {
-		s.log.Info("plugin not found in config, skip", "plugin", plugin.Name())
-		return nil
-	}
-	err := utils.ConvertJsonObjectToStruct(pluginOption.Config, pluginConfig)
+	err := utils.ConvertJsonObjectToStruct(config, pluginConfig)
 	if err != nil {
 		return fmt.Errorf("convert plugin config failed,err:%w", err)
 	}
